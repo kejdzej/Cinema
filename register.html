@@ -22,22 +22,101 @@
 
   <main class="form-container">
     <h2>Formularz rejestracyjny</h2>
-    <form>
-      <input type="text" placeholder="Imię" required />
-      <input type="text" placeholder="Nazwisko" required />
-      <input type="email" placeholder="E-mail" required />
-      <input type="password" placeholder="Hasło" required />
+    <form id="registerForm">
+      <input type="text" id="firstName" placeholder="Imię" required />
+      <input type="text" id="lastName" placeholder="Nazwisko" required />
+      <input type="email" id="email" placeholder="E-mail" required />
+      <input type="password" id="password" placeholder="Hasło" required />
+      <input type="password" id="confirmPassword" placeholder="Potwierdź hasło" required />
 
       <div class="checkboxes">
-        <label><input type="checkbox" required /> Zgadzam się</label><br />
-        <label><input type="checkbox" /> Otrzymywać newsletter</label><br />
-        <label><input type="checkbox" /> Zgoda na przetwarzanie danych</label>
+        <label><input type="checkbox" id="terms" required /> Zgadzam się z regulaminem</label><br />
+        <label><input type="checkbox" id="newsletter" /> Otrzymywać newsletter</label><br />
+        <label><input type="checkbox" id="privacy" required /> Zgoda na przetwarzanie danych</label>
       </div>
 
+      <div id="message"></div>
       <button type="submit" class="submit-btn">Zarejestruj</button>
     </form>
 
     <p class="alt-option">Masz już konto? <a href="login.html">Zaloguj się</a></p>
   </main>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:3000/api';
+    const form = document.getElementById("registerForm");
+    const messageDiv = document.getElementById("message");
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const firstName = document.getElementById("firstName").value.trim();
+      const lastName = document.getElementById("lastName").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+      const terms = document.getElementById("terms").checked;
+      const privacy = document.getElementById("privacy").checked;
+
+      // Validation
+      if (!firstName || !lastName || !email || !password) {
+        showMessage("Wypełnij wszystkie wymagane pola.", "error");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showMessage("Hasła nie są identyczne.", "error");
+        return;
+      }
+
+      if (password.length < 6) {
+        showMessage("Hasło musi mieć co najmniej 6 znaków.", "error");
+        return;
+      }
+
+      if (!terms || !privacy) {
+        showMessage("Musisz zaakceptować regulamin i zgodę na przetwarzanie danych.", "error");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            password: password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage("Rejestracja pomyślna! Możesz się teraz zalogować.", "success");
+          
+          // Clear form
+          form.reset();
+          
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 2000);
+        } else {
+          showMessage(data.error || "Błąd rejestracji", "error");
+        }
+      } catch (error) {
+        console.error('Registration failed:', error);
+        showMessage("Błąd połączenia z serwerem", "error");
+      }
+    });
+
+    function showMessage(text, type) {
+      messageDiv.textContent = text;
+      messageDiv.className = type;
+    }
+  </script>
 </body>
 </html>

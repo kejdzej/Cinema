@@ -1,0 +1,88 @@
+### Plan działania (kolejność minimalizująca ryzyko blokad)
+
+1) Ustalenia i przygotowanie
+- Ustalenie MVP wg `docs/user-stories_backlog.md`. Zablokowanie zakresu.
+- Wybór stacku backendu (np. Node.js + Express) i struktury repo (dodanie `server/`).
+- Konfiguracja CI (lint, testy, build), .env (sekrety lokalnie), konwencje commitów.
+
+2) Baza danych i migracje
+- Uruchomienie Postgresa lokalnie.
+- Migracje wg `docs/database-schema.sql` + seedy: role, przykładowe filmy, sala, seans.
+- Indeksy, unikalności (szczególnie `(showtime_id, seat_id)`).
+
+3) Szkielet API
+- Szkielet `/api` + obsługa błędów, logger, walidacja (zod/joi), health-check.
+- JWT w httpOnly, CORS, rate limit.
+
+4) Auth i role (z 2FA przygotowane)
+- `/auth/register|login|me|logout`, przypomnienie/reset hasła.
+- Role `customer|staff|admin` + middleware.
+- Przygotowanie endpointów 2FA (aktywacja/verify) – wdrożenie w kolejnej iteracji.
+
+5) Filmy/sale/seanse (Admin)
+- CRUD: `/admin/films`, `/admin/rooms`, `/admin/showtimes`.
+- GET: `/films`, `/showtimes`, `/showtimes/{id}` zgodnie z `docs/api-spec.md`.
+
+6) Model miejsc i dostępność
+- `/showtimes/{id}/seats` – zwrot stanu miejsc.
+- Mechanizm HOLD (tymczasowa rezerwacja): tabela `bookings` + `booking_seats` z `reserved_until`.
+- Cron/worker do czyszczenia wygasłych holdów.
+- Transakcje i blokady optymistyczne, obsługa 409 (konflikt).
+
+7) Rezerwacja i checkout (MVP bez produkcyjnych płatności)
+- POST `/showtimes/{id}/reserve` (tworzy hold).
+- POST `/bookings/{id}/checkout` – integracja sandbox płatności (Stripe/Przelewy24).
+- Webhook `/payments/webhook`: idempotencja, atomowa zmiana `payments` + `bookings`.
+
+8) Bilet PDF + QR
+- Generacja po statusie `paid`: kod biletu (krótki, unikalny), PDF on-demand `/tickets/{id}/pdf`.
+- Przechowywanie minimalne (generacja na żądanie).
+
+9) Weryfikacja biletów (Pracownik)
+- `/tickets/verify` (kod/QR) → wynik ważny/nieważny/użyty.
+- Prosta strona dla pracownika (lub tylko API w MVP).
+
+10) Integracja frontendu (iteracyjnie, bez przepisywania UI)
+- Login i stan sesji.
+- Repertuar i seanse: zamiana statycznych danych na fetche.
+- Widok miejsc: z `/showtimes/{id}/seats`, rezerwacja: `/reserve`, płatność: redirect do sesji.
+- Pobranie biletu PDF po opłacie.
+
+11) Popcorn Bar
+- `/snacks`, `/snack-orders` + płatność.
+- Powiązanie z showtime (pickup opcjonalny).
+
+12) Program lojalnościowy
+- Naliczenia przy finalize (bilety + snacki), historia, `GET /loyalty`, `POST /loyalty/redeem`.
+
+13) Raporty (Admin)
+- `/admin/reports/sales` i `/admin/reports/occupancy` (agregacje bazodanowe).
+
+14) AI
+- Rekomendacje: prosty algorytm (popularność + historia), `/ai/recommendations`.
+- Chatbot: `/ai/chat` (FAQ + reguły), podmiana istniejącego prostego bota w UI.
+
+15) 2FA, i18n, twardnienie bezpieczeństwa
+- Włączenie TOTP, wymuszanie przy roli wrażliwej.
+- PL/EN na froncie i w danych filmów.
+- Polityki haseł, CSRF dla formularzy, dodatkowe rate limits.
+
+16) Niefunkcjonalne i operacyjne
+- Monitoring, metryki, alerty; logi strukturalne.
+- E2E testy krytycznych ścieżek (Cypress/Playwright).
+- Zero-downtime deploy, migracje w CI/CD, backupy DB.
+
+### Pułapki i jak ich uniknąć
+- Miejsca i wyścigi: unikalność `(showtime_id, seat_id)`, transakcje; HOLD z TTL i cleanupem.
+- Płatności: webhook idempotentny, podpisy weryfikowane, finalize tylko po webhooku.
+- Strefy czasowe: `TIMESTAMPTZ` wszędzie; jedna referencyjna TZ w backendzie.
+- QR i kody: krótkie, nieprzewidywalne, unikaj danych osobowych w kodzie.
+- Uprawnienia: RBAC w middleware, nie w kontrolerach ad hoc.
+- Migracje: tylko przez narzędzie (Prisma/Knex/TypeORM); zakaz „ręcznych” zmian w produkcji.
+
+### Minimalna kolejność integracji frontu
+- Auth → Repertuar/Seanse → Miejsca/HOLD → Checkout/Webhook → PDF/QR → Weryfikacja → Snacks → Lojalność → AI.
+
+- Dla MVP wystarczy: logowanie, przegląd seansów, wybór miejsc, checkout sandbox, PDF/QR, weryfikacja.
+
+- Utworzyłem dokumenty: `docs/architecture.md`, `docs/api-spec.md`, `docs/database-schema.sql`, `docs/user-stories_backlog.md`.

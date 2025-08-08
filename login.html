@@ -38,36 +38,91 @@
       font-weight: bold;
       cursor: pointer;
     }
+
+    .error {
+      color: #ff6b6b;
+      margin-top: 10px;
+    }
+
+    .success {
+      color: #51cf66;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h2>Zaloguj się</h2>
 
   <form id="loginForm">
-    <input type="text" id="username" placeholder="Login" required />
+    <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Hasło" required />
     <button type="submit">Zaloguj</button>
+    <div id="message"></div>
   </form>
 
-  <script>
-    const form = document.getElementById("loginForm");
+  <p>Nie masz konta? <a href="register.html" style="color: gold;">Zarejestruj się</a></p>
 
-    form.addEventListener("submit", function (e) {
+  <script>
+    const API_BASE_URL = 'http://localhost:3000/api';
+    const form = document.getElementById("loginForm");
+    const messageDiv = document.getElementById("message");
+
+    form.addEventListener("submit", async function (e) {
       e.preventDefault();
 
-      const username = document.getElementById("username").value.trim();
+      const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
 
-      // 👇 Тут можна додати перевірку логіна/пароля або просто логін
-      if (username && password) {
-        localStorage.setItem("loggedIn", "true");
-        localStorage.setItem("username", username);
-
-        alert("Zalogowano pomyślnie!");
-        window.location.href = "index.html"; // повертає на головну
-      } else {
-        alert("Wprowadź login i hasło.");
+      if (!email || !password) {
+        showMessage("Wprowadź email i hasło.", "error");
+        return;
       }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Store token and user info
+          localStorage.setItem("loggedIn", "true");
+          localStorage.setItem("authToken", data.token);
+          localStorage.setItem("userEmail", email);
+          
+          showMessage("Zalogowano pomyślnie!", "success");
+          
+          // Force redirect after successful login
+          setTimeout(() => {
+            window.location.href = "index.html";
+          }, 1000);
+        } else {
+          showMessage(data.error || "Błąd logowania", "error");
+        }
+      } catch (error) {
+        console.error('Login failed:', error);
+        showMessage("Błąd połączenia z serwerem", "error");
+      }
+    });
+
+    function showMessage(text, type) {
+      messageDiv.textContent = text;
+      messageDiv.className = type;
+    }
+
+    // Test credentials for demo
+    document.addEventListener('DOMContentLoaded', () => {
+      // Pre-fill with test credentials
+      document.getElementById("email").value = "admin@cinema.com";
+      document.getElementById("password").value = "admin123";
     });
   </script>
 </body>

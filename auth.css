@@ -83,3 +83,16 @@ form input[type="password"] {
   margin-top: 15px;
   font-size: 14px;
 }
+
+/* Message styles */
+.error {
+  color: #ff6b6b;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.success {
+  color: #51cf66;
+  margin-top: 10px;
+  font-size: 14px;
+}

@@ -6,6 +6,86 @@ const next = document.querySelector('.next');
 const titleEl = document.getElementById('movie-title');
 const descEl = document.getElementById('movie-description');
 
+// API Configuration
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// Fetch films from API
+async function fetchFilms() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/films`);
+    const data = await response.json();
+    
+    if (data.films) {
+      updateMovieCards(data.films);
+      updateSliderData(data.films);
+    }
+  } catch (error) {
+    console.error('Failed to fetch films:', error);
+  }
+}
+
+// Update movie cards with API data
+function updateMovieCards(films) {
+  const repertoireGrid = document.querySelector('.repertoire-grid');
+  if (!repertoireGrid) return;
+
+  repertoireGrid.innerHTML = '';
+
+  films.forEach(film => {
+    const movieCard = document.createElement('div');
+    movieCard.className = 'movie-card';
+    
+    movieCard.innerHTML = `
+      <img src="${film.poster_url}" alt="${film.title}" />
+      <div class="movie-info">
+        <h4>${film.title}</h4>
+        <div class="showtimes">
+          <button onclick="selectShowtime('${film.id}', '12:00')">12:00</button>
+          <button onclick="selectShowtime('${film.id}', '15:30')">15:30</button>
+          <button onclick="selectShowtime('${film.id}', '18:45')">18:45</button>
+          <button onclick="selectShowtime('${film.id}', '21:00')">21:00</button>
+        </div>
+      </div>
+    `;
+    
+    repertoireGrid.appendChild(movieCard);
+  });
+}
+
+// Update slider with API data
+function updateSliderData(films) {
+  if (films.length === 0) return;
+  
+  // Update first slide data
+  const firstFilm = films[0];
+  titleEl.textContent = firstFilm.title;
+  document.getElementById('movie-genre').textContent = firstFilm.genre || '';
+  document.getElementById('movie-director').textContent = firstFilm.director || '';
+  document.getElementById('movie-actors').textContent = firstFilm.actors || '';
+  document.getElementById('movie-duration').textContent = `${firstFilm.duration_min} min`;
+  document.getElementById('movie-premiere').textContent = firstFilm.premiere_date ? new Date(firstFilm.premiere_date).toLocaleDateString('pl-PL') : '';
+  descEl.textContent = firstFilm.description || '';
+}
+
+// Select showtime function
+function selectShowtime(filmId, time) {
+  const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+  
+  if (!isLoggedIn) {
+    alert("Musisz się zalogować, aby wybrać miejsce.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  // For now, redirect to booking with film ID
+  const params = new URLSearchParams({
+    filmId: filmId,
+    time: time
+  });
+
+  window.location.href = `booking.html?${params.toString()}`;
+}
+
 const movieData = [                                   //to mozna potem do bazy
   {
     title: "Oppenheimer",
@@ -14,7 +94,7 @@ const movieData = [                                   //to mozna potem do bazy
     actors: "Cillian Murphy, Emily Blunt, Matt Damon",
     duration: "180 min",
     premiere: "21.07.2023",
-    description: "Epicka historia człowieka, który wynalazł bombę atomową i musiał żyć z jej skutkami."
+    description: "Epicka historia człowieka, który wynalazł bombę atomową i musiał żyć z jego skutkami."
   },
   {
     title: "Lilo & Stitch",
@@ -54,7 +134,6 @@ const movieData = [                                   //to mozna potem do bazy
   }
 ];
 
-
 const genreEl = document.getElementById('movie-genre');
 const directorEl = document.getElementById('movie-director');
 const actorsEl = document.getElementById('movie-actors');
@@ -79,7 +158,6 @@ function showSlide(index) {
   currentSlide = index;
 }
 
-
 function nextSlide() {
   let newIndex = (currentSlide + 1) % slides.length;
   showSlide(newIndex);
@@ -96,25 +174,65 @@ dots.forEach((dot, i) => {
 
 prev.addEventListener('click', prevSlide);
 next.addEventListener('click', nextSlide);
+
+// Logout function
+function logout() {
+  localStorage.removeItem("loggedIn");
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("userEmail");
+  isLoggedIn = false;
+  updateAuthUI();
+  window.location.reload();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   showSlide(0); // pokazuje pierwszy slajd z opisem
+  
+  // Update auth UI
+  updateAuthUI();
+  
+  // Fetch films from API
+  fetchFilms();
 });
+
 setInterval(nextSlide, 4000); // karusel slajdow co 4 sek
 
-
-// Sparawdzenie przykladowego logowania (bazy nie mamy, wprowadz jakiekolwiek dane)
+// Check if user is logged in
 let isLoggedIn = localStorage.getItem("loggedIn") === "true";
+const authToken = localStorage.getItem("authToken");
 
-// kliikniecie na wybrany seans
-document.querySelectorAll(".showtimes button").forEach(button => {
-  button.addEventListener("click", () => {
+// Update UI based on login status
+function updateAuthUI() {
+  const authButtons = document.querySelector('.auth-buttons');
+  if (authButtons) {
+    // Re-check login status
+    const currentLoginStatus = localStorage.getItem("loggedIn") === "true";
+    const userEmail = localStorage.getItem("userEmail");
+    
+    if (currentLoginStatus) {
+      authButtons.innerHTML = `
+        <span style="color: gold; margin-right: 10px;">Zalogowany: ${userEmail || "Użytkownik"}</span>
+        <a href="#" onclick="logout()" class="login">Wyloguj</a>
+      `;
+    } else {
+      authButtons.innerHTML = `
+        <a href="login.html" class="login">🔑 Zaloguj się</a>
+        <a href="register.html" class="register">Zarejestruj się</a>
+      `;
+    }
+  }
+}
+
+// kliikniecie na wybrany seans - nowa wersja z API
+document.addEventListener('click', (e) => {
+  if (e.target.matches('.showtimes button')) {
     if (!isLoggedIn) {
       alert("Musisz się zalogować, aby wybrać miejsce.");
-      window.location.href = "dashboard.html"; 
+      window.location.href = "login.html"; 
     } else {
-      
-      const movieTitle = button.closest(".movie-info").querySelector("h4").textContent;
-      const time = button.textContent;
+      const movieCard = e.target.closest('.movie-card');
+      const movieTitle = movieCard.querySelector("h4").textContent;
+      const time = e.target.textContent;
 
       const params = new URLSearchParams({
         title: movieTitle,
@@ -123,7 +241,7 @@ document.querySelectorAll(".showtimes button").forEach(button => {
 
       window.location.href = `booking.html?${params.toString()}`;
     }
-  });
+  }
 });
 
 //wyszykaj...

@@ -30,7 +30,7 @@
     <div>
       <div class="screen">EKRAN</div>
       <div class="seats" id="seatsGrid">
-        
+        <p>Ładowanie miejsc...</p>
       </div>
 
       <div class="legend">
@@ -51,58 +51,216 @@
   </div>
 
   <script>
-    const seatPrice = 20;
+    const API_BASE_URL = 'http://localhost:3000/api';
+    const seatPrice = 22; // zł
     const seatsGrid = document.getElementById('seatsGrid');
     const selectedSeatsList = document.getElementById('selectedSeatsList');
     const totalAmount = document.getElementById('totalAmount');
 
     const movieTitle = new URLSearchParams(window.location.search).get("title") || "Brak";
     const movieTime = new URLSearchParams(window.location.search).get("time") || "--:--";
+    const filmId = new URLSearchParams(window.location.search).get("filmId");
 
     document.getElementById("movieTitle").textContent = movieTitle;
     document.getElementById("movieTime").textContent = movieTime;
 
-    // wygenerowanie miejsc
-    for (let i = 1; i <= 80; i++) {
-      const seat = document.createElement("div");
-      seat.classList.add("seat");
+    let selectedSeats = [];
+    let showtimeId = null;
 
-      // randomowe miejsca zajete
-      if (Math.random() < 0.1) {
-        seat.classList.add("occupied");
+    // Fetch showtimes for the film
+    async function fetchShowtimes() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/showtimes`);
+        const data = await response.json();
+        
+        if (data.showtimes) {
+          // Find showtime that matches our film and time
+          const showtime = data.showtimes.find(s => 
+            s.film.title === movieTitle && 
+            new Date(s.starts_at).toLocaleTimeString('pl-PL', {hour: '2-digit', minute:'2-digit'}) === movieTime
+          );
+          
+          if (showtime) {
+            showtimeId = showtime.id;
+            await fetchSeats(showtime.id);
+          } else {
+            seatsGrid.innerHTML = '<p>Nie znaleziono seansu</p>';
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch showtimes:', error);
+        seatsGrid.innerHTML = '<p>Błąd ładowania seansów</p>';
       }
+    }
 
-      seat.addEventListener("click", () => {
-        if (seat.classList.contains("occupied")) return;
-        seat.classList.toggle("selected");
-        updateSelected();
+    // Fetch seats for showtime
+    async function fetchSeats(showtimeId) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/showtimes/${showtimeId}/seats`);
+        const data = await response.json();
+        
+        if (data.seats) {
+          renderSeats(data.seats, data.room);
+        }
+      } catch (error) {
+        console.error('Failed to fetch seats:', error);
+        seatsGrid.innerHTML = '<p>Błąd ładowania miejsc</p>';
+      }
+    }
+
+    // Render seats
+    function renderSeats(seats, room) {
+      seatsGrid.innerHTML = '';
+      
+      // Group seats by row
+      const seatsByRow = {};
+      seats.forEach(seat => {
+        if (!seatsByRow[seat.row_label]) {
+          seatsByRow[seat.row_label] = [];
+        }
+        seatsByRow[seat.row_label].push(seat);
       });
 
-      seatsGrid.appendChild(seat);
+      // Create seat grid
+      Object.keys(seatsByRow).sort().forEach(rowLabel => {
+        const rowSeats = seatsByRow[rowLabel];
+        
+        rowSeats.forEach(seat => {
+          const seatElement = document.createElement("div");
+          seatElement.classList.add("seat");
+          seatElement.dataset.seatId = seat.id;
+          seatElement.dataset.row = seat.row_label;
+          seatElement.dataset.number = seat.seat_number;
+          seatElement.dataset.type = seat.type;
+          
+          // Add seat label
+          seatElement.innerHTML = `<span class="seat-label">${seat.row_label}${seat.seat_number}</span>`;
+          
+          // Mark as occupied if not available
+          if (seat.status !== 'available') {
+            seatElement.classList.add("occupied");
+          }
+
+          seatElement.addEventListener("click", () => {
+            if (seatElement.classList.contains("occupied")) return;
+            seatElement.classList.toggle("selected");
+            updateSelected();
+          });
+
+          seatsGrid.appendChild(seatElement);
+        });
+        
+        // Add row break
+        const rowBreak = document.createElement("div");
+        rowBreak.style.clear = "both";
+        rowBreak.style.height = "10px";
+        seatsGrid.appendChild(rowBreak);
+      });
     }
 
     function updateSelected() {
-      const selectedSeats = document.querySelectorAll(".seat.selected");
+      const selectedSeatElements = document.querySelectorAll(".seat.selected");
+      selectedSeats = Array.from(selectedSeatElements).map(seat => seat.dataset.seatId);
+      
       selectedSeatsList.innerHTML = "";
-
-      selectedSeats.forEach((seat, index) => {
-        const seatNumber = [...seatsGrid.children].indexOf(seat) + 1;
+      selectedSeatElements.forEach((seat, index) => {
         const listItem = document.createElement("li");
-        listItem.textContent = `Miejsce ${seatNumber}`;
+        listItem.textContent = `Miejsce ${seat.dataset.row}${seat.dataset.number}`;
         selectedSeatsList.appendChild(listItem);
       });
 
       totalAmount.textContent = selectedSeats.length * seatPrice;
     }
 
-    function confirmPurchase() {
-      const count = document.querySelectorAll(".seat.selected").length;
-      if (count === 0) {
+    async function confirmPurchase() {
+      if (selectedSeats.length === 0) {
         alert("Wybierz przynajmniej jedno miejsce!");
         return;
       }
-      alert(`Dziękujemy! Zakupiono ${count} bilet(ów) za ${count * seatPrice} zł`);
-      // Tu mozna zrealizowac logike zapisywania danych do bazy / API
+
+      if (!showtimeId) {
+        alert("Błąd: Nie znaleziono seansu");
+        return;
+      }
+
+      // Check if user is logged in
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        alert("Musisz się zalogować, aby kupić bilet!");
+        window.location.href = "login.html";
+        return;
+      }
+
+      try {
+        // Reserve seats
+        const reserveResponse = await fetch(`${API_BASE_URL}/showtimes/${showtimeId}/reserve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            seats: selectedSeats
+          })
+        });
+
+        const reserveData = await reserveResponse.json();
+        
+        if (reserveResponse.ok) {
+          // Proceed to checkout
+          const checkoutResponse = await fetch(`${API_BASE_URL}/bookings/${reserveData.bookingId}/checkout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              paymentMethod: 'card',
+              paymentToken: 'tok_test_123'
+            })
+          });
+
+          const checkoutData = await checkoutResponse.json();
+          
+          if (checkoutResponse.ok) {
+            alert(`Dziękujemy! Zakupiono ${selectedSeats.length} bilet(ów) za ${(selectedSeats.length * seatPrice)} zł`);
+            window.location.href = "index.html";
+          } else {
+            alert(`Błąd płatności: ${checkoutData.error}`);
+          }
+        } else {
+          alert(`Błąd rezerwacji: ${reserveData.error}`);
+        }
+      } catch (error) {
+        console.error('Purchase failed:', error);
+        alert('Błąd podczas zakupu biletu');
+      }
+    }
+
+    // Initialize
+    if (filmId) {
+      fetchShowtimes();
+    } else {
+      // Fallback to static seats for testing
+      seatsGrid.innerHTML = '<p>Ładowanie miejsc...</p>';
+      setTimeout(() => {
+        for (let i = 1; i <= 80; i++) {
+          const seat = document.createElement("div");
+          seat.classList.add("seat");
+
+          if (Math.random() < 0.1) {
+            seat.classList.add("occupied");
+          }
+
+          seat.addEventListener("click", () => {
+            if (seat.classList.contains("occupied")) return;
+            seat.classList.toggle("selected");
+            updateSelected();
+          });
+
+          seatsGrid.appendChild(seat);
+        }
+      }, 1000);
     }
   </script>
 </body>
