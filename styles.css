@@ -1,0 +1,412 @@
+/* Основні стилі */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #0e0e1b;
+  color: white;
+}
+
+/* Навігація */
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #000;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 20px;
+  margin-right: 20px;
+  color: gold;
+}
+
+.search-bar {
+  flex: 1;
+  padding: 6px 10px;
+  margin: 10px;
+  border-radius: 4px;
+  border: none;
+}
+
+/* Меню */
+.menu a {
+  margin: 0 10px;
+  text-decoration: none;
+  color: white;
+  font-weight: bold;
+}
+
+.menu a:hover {
+  border-bottom: 2px solid gold;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-buttons a {
+  text-decoration: none;
+  color: white;
+  border: 1px solid white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.auth-buttons a:hover {
+  background-color: white;
+  color: black;
+}
+
+/* Контент */
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 30px;
+  gap: 40px;
+  flex-wrap: nowrap;
+}
+
+/* Слайдер */
+.slider {
+  position: relative;
+  width: 600px;
+  max-width: 100%;
+}
+
+.slider-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+.slide {
+  width: 100%;
+  display: none;
+}
+
+.slide.active {
+  display: block;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+.slider-controls {
+  text-align: center;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.dots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background-color: #888;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.dot.active {
+  background-color: gold;
+}
+
+.prev, .next {
+  font-size: 22px;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Інформація про фільм */
+.movie-info {
+  background-color: white;
+  color: black;
+  padding: 15px;
+  border-radius: 6px;
+  width: auto;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.movie-info h2 {
+  margin: 10px 0 5px;
+  font-size: 20px;
+}
+
+.movie-info p {
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.movie-info strong {
+  color: #333;
+}
+
+#movie-description {
+  margin-top: 10px;
+}
+
+/* Кнопка покупки */
+.buy-button {
+  background-color: gold;
+  color: black;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: auto;
+  transition: all 0.3s ease;
+}
+
+.buy-button:hover {
+  border: 2px solid black;
+}
+
+/* Заголовки секцій */
+.section-title {
+  font-size: 28px;
+  margin: 40px 0 20px;
+  text-align: center;
+  color: gold;
+}
+
+/* Сітка */
+.repertoire-section,
+.popcorn-section,
+.news-section {
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  clear: both;
+}
+
+.repertoire-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* Карточки */
+.movie-card {
+  background-color: #1c1c2c;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+  color: black;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  box-sizing: border-box;
+}
+
+.movie-card:hover {
+  transform: scale(1.03);
+}
+
+.movie-card img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+}
+
+.movie-card .movie-info {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 15px;
+  height: auto;
+}
+
+.movie-card .movie-info p,
+.movie-card .movie-info h4 {
+  margin: 5px 0;
+  font-size: 14px;
+  color: black;
+}
+
+.week-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 10px;
+  margin-bottom: 30px;
+  padding: 10px 5px;
+  /*background-color: #1c1c2c;*/
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-button, .calendar-button {
+  background-color: #fff;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: bold;
+  min-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.day-button span {
+  display: block;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.day-button.active {
+  background-color: gold;
+}
+
+.day-button:hover, .calendar-button:hover {
+  background-color: gold;
+  color: black;
+}
+
+/* Часи сеансів */
+.showtimes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.showtimes button {
+  background-color: gold;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.showtimes button:hover {
+  border: 2px solid black;
+}
+.prices-section {
+  padding: 40px 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.price-card {
+  background-color: #1c1c2c;
+  border-radius: 8px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.price-card h4 {
+  margin-bottom: 10px;
+  color: gold;
+}
+
+/*dashboard*/
+
+.dashboard-container {
+  padding: 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+  color: white;
+}
+
+.recommend-slider, .chat-assistant, .purchase-history {
+  margin-top: 40px;
+}
+
+.chat-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: gold;
+  color: black;
+  padding: 10px 15px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 999;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.chat-window {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 300px;
+  background-color: #fff;
+  color: black;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  z-index: 1000;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-header {
+  background-color: gold;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.chat-box {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f0f0f0;
+  font-size: 14px;
+}
+
+.chat-box .bot-msg, .chat-box .user-msg {
+  margin-bottom: 10px;
+}
+
+#chat-input {
+  width: calc(100% - 70px);
+  padding: 8px;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+
+.chat-window button {
+  width: 60px;
+  border: none;
+  background: gold;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+}

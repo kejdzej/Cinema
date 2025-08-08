@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rejestracja - CINEMA</title>
+  <link rel="stylesheet" href="auth.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">🎬 CINEMA</div>
+    <nav class="menu">
+      <a href="index.html">REPERTUAR</a>
+      <a href="#">AKTUALNOŚCI</a>
+      <a href="#">POPCORN BAR</a>
+      <a href="#">CENNIK</a>
+    </nav>
+    <div class="auth-buttons">
+      <a href="login.html" class="login">🔑 Zaloguj się</a>
+      <a href="register.html" class="register">Zarejestruj się</a>
+    </div>
+  </header>
+
+  <main class="form-container">
+    <h2>Formularz rejestracyjny</h2>
+    <form>
+      <input type="text" placeholder="Imię" required />
+      <input type="text" placeholder="Nazwisko" required />
+      <input type="email" placeholder="E-mail" required />
+      <input type="password" placeholder="Hasło" required />
+
+      <div class="checkboxes">
+        <label><input type="checkbox" required /> Zgadzam się</label><br />
+        <label><input type="checkbox" /> Otrzymywać newsletter</label><br />
+        <label><input type="checkbox" /> Zgoda na przetwarzanie danych</label>
+      </div>
+
+      <button type="submit" class="submit-btn">Zarejestruj</button>
+    </form>
+
+    <p class="alt-option">Masz już konto? <a href="login.html">Zaloguj się</a></p>
+  </main>
+</body>
+</html>

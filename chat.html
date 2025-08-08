@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="chat-box"></div>
+  <input type="text" id="chat-input" placeholder="Zadaj pytanie..." />
+  <button onclick="sendMessage()">Wyślij</button>
+</body>
+<script>function sendMessage() {
+  const input = document.getElementById("chat-input");
+  const box = document.getElementById("chat-box");
+  const message = input.value;
+
+  box.innerHTML += `<div>Ty: ${message}</div>`;
+
+  if (message.includes("bilet")) {
+    box.innerHTML += `<div>Bot: Możesz sprawdzić historię zakupów w zakładce poniżej!</div>`;
+  } else {
+    box.innerHTML += `<div>Bot: Dziękuję za wiadomość. Wkrótce odpowiemy!</div>`;
+  }
+
+  input.value = "";
+}
+</script>
+</html>

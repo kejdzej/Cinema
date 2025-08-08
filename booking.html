@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Rezerwacja miejsc</title>
+  <link rel="stylesheet" href="booking.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+    <header class="navbar">
+    <div class="logo">🎬 CINEMA</div>
+    <input type="text" placeholder="Wyszukaj" class="search-bar" />
+    <nav class="menu">
+      <a href="index.html">REPERTUAR</a>
+      <a href="#">AKTUALNOŚCI</a>
+      <a href="#">POPCORN BAR</a>
+      <a href="#">CENNIK</a>
+    </nav>
+    <div class="auth-buttons">
+      <a href="login.html" class="login">🔑 Zaloguj się</a>
+      <a href="register.html" class="register">Zarejestruj się</a>
+    </div>
+  </header>
+
+  <h2>Rezerwacja miejsc</h2>
+  <p><strong>Film:</strong> <span id="movieTitle"></span></p>
+  <p><strong>Godzina:</strong> <span id="movieTime"></span></p>
+
+  <div class="booking-container">
+    <div>
+      <div class="screen">EKRAN</div>
+      <div class="seats" id="seatsGrid">
+        
+      </div>
+
+      <div class="legend">
+        <p>
+          <span style="display:inline-block;width:15px;height:15px;background:white;border-radius:3px;"></span> Wolne
+          <span style="display:inline-block;width:15px;height:15px;background:red;border-radius:3px;margin-left:10px;"></span> Zajęte
+          <span style="display:inline-block;width:15px;height:15px;background:gold;border-radius:3px;margin-left:10px;"></span> Wybrane
+        </p>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <h3>Wybrane miejsca</h3>
+      <ul id="selectedSeatsList"></ul>
+      <div class="total">Suma: <span id="totalAmount">0</span> zł</div>
+      <button class="buy-button" onclick="confirmPurchase()">Kup bilet</button>
+    </div>
+  </div>
+
+  <script>
+    const seatPrice = 20;
+    const seatsGrid = document.getElementById('seatsGrid');
+    const selectedSeatsList = document.getElementById('selectedSeatsList');
+    const totalAmount = document.getElementById('totalAmount');
+
+    const movieTitle = new URLSearchParams(window.location.search).get("title") || "Brak";
+    const movieTime = new URLSearchParams(window.location.search).get("time") || "--:--";
+
+    document.getElementById("movieTitle").textContent = movieTitle;
+    document.getElementById("movieTime").textContent = movieTime;
+
+    // wygenerowanie miejsc
+    for (let i = 1; i <= 80; i++) {
+      const seat = document.createElement("div");
+      seat.classList.add("seat");
+
+      // randomowe miejsca zajete
+      if (Math.random() < 0.1) {
+        seat.classList.add("occupied");
+      }
+
+      seat.addEventListener("click", () => {
+        if (seat.classList.contains("occupied")) return;
+        seat.classList.toggle("selected");
+        updateSelected();
+      });
+
+      seatsGrid.appendChild(seat);
+    }
+
+    function updateSelected() {
+      const selectedSeats = document.querySelectorAll(".seat.selected");
+      selectedSeatsList.innerHTML = "";
+
+      selectedSeats.forEach((seat, index) => {
+        const seatNumber = [...seatsGrid.children].indexOf(seat) + 1;
+        const listItem = document.createElement("li");
+        listItem.textContent = `Miejsce ${seatNumber}`;
+        selectedSeatsList.appendChild(listItem);
+      });
+
+      totalAmount.textContent = selectedSeats.length * seatPrice;
+    }
+
+    function confirmPurchase() {
+      const count = document.querySelectorAll(".seat.selected").length;
+      if (count === 0) {
+        alert("Wybierz przynajmniej jedno miejsce!");
+        return;
+      }
+      alert(`Dziękujemy! Zakupiono ${count} bilet(ów) za ${count * seatPrice} zł`);
+      // Tu mozna zrealizowac logike zapisywania danych do bazy / API
+    }
+  </script>
+</body>
+</html>

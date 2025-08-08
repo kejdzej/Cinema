@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinema</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">🎬 CINEMA</div>
+    <input type="text" placeholder="Wyszukaj" class="search-bar" id="search-input" />
+    <nav class="menu">
+      <a href="#repertoire">REPERTUAR</a>
+      <a href="#news">AKTUALNOŚCI</a>
+      <a href="#popcorn">POPCORN BAR</a>
+      <a href="#prices">CENNIK</a>
+    </nav>
+    <div class="auth-buttons">
+      <a href="login.html" class="login">🔑 Zaloguj się</a>
+      <a href="register.html" class="register">Zarejestruj się</a>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="slider">
+      <div class="slider-wrapper">
+        <img src="pictures/oppenheimer.jpeg" class="slide active" />
+        <img src="pictures/lilo-stitch.jpg" class="slide" />
+        <img src="pictures/aladdin.jpg" class="slide" />
+        <img src="pictures/marvel.jpg" class="slide" />
+        <img src="pictures/venom.jpg" class="slide" />
+      </div>
+      <div class="slider-controls">
+        <span class="prev">&#10094;</span>
+        <div class="dots">
+          <span class="dot active"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <span class="next">&#10095;</span>
+      </div>
+    </div>
+
+    <div class="movie-info">
+    <h2 id="movie-title">Tytuł filmu</h2>
+    <p><strong>Gatunek:</strong> <span id="movie-genre"></span></p>
+    <p><strong>Reżyser:</strong> <span id="movie-director"></span></p>
+    <p><strong>Aktorzy:</strong> <span id="movie-actors"></span></p>
+    <p><strong>Czas trwania:</strong> <span id="movie-duration"></span></p>
+    <p><strong>Premiera:</strong> <span id="movie-premiere"></span></p>
+    <p id="movie-description"></p>
+    <button class="buy-button"> <a href="#showtimes"> Kup bilet</a></button>
+    </div>
+  </main>
+
+  
+<section id="repertoire" class="repertoire-section">
+  <h2 class="section-title">REPERTUAR</h2>
+  <div class="week-strip">
+  <button class="day-button active">Dziś<br><span>10.07</span></button>
+  <button class="day-button">Jutro<br><span>11.07</span></button>
+  <button class="day-button">Piątek<br><span>12.07</span></button>
+  <button class="day-button">Sobota<br><span>13.07</span></button>
+  <button class="day-button">Niedziela<br><span>14.07</span></button>
+  <button class="day-button">Poniedziałek<br><span>15.07</span></button>
+  <button class="day-button">Wtorek<br><span>16.07</span></button>
+  <button class="calendar-button">📅</button>
+</div>
+
+  <div class="repertoire-grid">
+    <div class="movie-card">
+      <img src="pictures/oppenheimer.jpeg" alt="Oppenheimer" />
+      <div class="movie-info">
+  <h4>Oppenheimer</h4>
+  <div class="showtimes">
+    <button>12:00</button>
+    <button>15:30</button>
+    <button>18:45</button>
+    <button>15:30</button>
+    <button>12:00</button>
+    <button>15:30</button>
+    <button>18:45</button>
+    <button>15:30</button>
+  </div>
+</div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/lilo-stitch.jpg" alt="Lilo & Stitch" />
+      <div class="movie-info">
+        <h4>Lilo & Stitch</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/aladdin.jpg" alt="Aladdin" />
+      <div class="movie-info">
+        <h4>Aladdin</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/marvel.jpg" alt="Avengers" />
+      <div class="movie-info">
+        <h4>Avengers</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/venom.jpg" alt="Venom" />
+      <div class="movie-info">
+        <h4>Venom</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/barbie.webp" alt="Barbie" />
+      <div class="movie-info">
+        <h4>Barbie</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/dragon.jpg" alt="Oppenheimer" />
+      <div class="movie-info">
+        <h4>How to train your dragon</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/minecraft.jpg" alt="Oppenheimer" />
+      <div class="movie-info">
+        <h4>Minecraft movie</h4>
+        <div class="showtimes">
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+          <button>12:00</button>
+          <button>15:30</button>
+          <button>18:45</button>
+          <button>15:30</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</section>
+
+<section id="popcorn" class="popcorn-section">
+  <h2 class="section-title">POPCORN BAR</h2>
+  <div class="repertoire-grid">
+    <div class="movie-card">
+      <img src="pictures/popcorn.jpg" alt="Popcorn" />
+      <div class="movie-info">
+        <h4>Popcorn</h4>
+        <p>Duży kubełek — 30 zł</p>
+        <p>Średni kubełek — 28 zł</p>
+        <p>Mały kubełek — 22 zł</p>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/nachos.jpg" alt="Nachos" />
+      <div class="movie-info">
+        <h4>Nachos</h4>
+        <p>Z sosem ostrym — 20 zł</p>
+        <p>Z sosem łagodnym — 20 zł</p>
+        <p></p>  
+        <p></p>  
+        <p></p>  
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/cola.png" alt="Cola" />
+      <div class="movie-info">
+        <h4>Napoje na wybór</h4>
+        <p>Cola, pepsi, fanta, ice tea</p>
+        <p>500 ml — 10 zł</p>
+        <p></p>
+        <p></p>
+        <p></p>      
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/zestaw.jpg" alt="Zestaw kinowy" />
+      <div class="movie-info">
+        <h4>Zestaw kinowy</h4>
+        <p>Duży popcorn + 2x dowolny napój — 45 zł</p>
+        <p>Dla rodziny: 2 dużych kubełka popcornu + 3 dowolnych napoje - 70 zł</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="prices" class="prices-section">
+  <h2 class="section-title">CENNIK</h2>
+  <div class="price-grid">
+    <div class="price-card">
+      <h4>Bilet normalny</h4>
+      <p>22 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Bilet ulgowy (uczniowie, studenci)</h4>
+      <p>18 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Bilet rodzinny (min. 3 osoby)</h4>
+      <p>16 zł / osoba</p>
+    </div>
+    <div class="price-card">
+      <h4>Bilet na maraton filmowy</h4>
+      <p>35 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Bilet VIP (z napojem i popcornem)</h4>
+      <p>40 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Karnet miesięczny normalny</h4>
+      <p>150 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Karnet miesięczny ulgowy</h4>
+      <p>120 zł</p>
+    </div>
+    <div class="price-card">
+      <h4>Wynajem sali kinowej dla własnych potrzeb</h4>
+      <p>Do uzgody</p>
+    </div>
+  </div>
+</section>
+
+
+<section id="news" class="news-section">
+  <h2 class="section-title">AKTUALNOŚCI</h2>
+  <div class="repertoire-grid">
+    <div class="movie-card">
+      <img src="pictures/new1.jpg" alt="Wydarzenie" />
+      <div class="movie-info">
+        <h4>Noc Filmowa</h4>
+        <p>Już w ten piątek! Maraton horrorów od 22:00!</p>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/new2.jpg" alt="Wydarzenie" />
+      <div class="movie-info">
+        <h4>Konkurs cosplay</h4>
+        <p>Wygraj darmowe bilety! 14.07 na sali kinowej 3</p>
+      </div>
+    </div>
+    <div class="movie-card">
+      <img src="pictures/popcorn_pink.jpg" alt="Wydarzenie" />
+      <div class="movie-info">
+        <h4>Premiera Barbie 2</h4>
+        <p>Specjalny pokaz z różowym popcornem! 20.07</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+  <script src="script.js"></script>
+</body>
+</html>
