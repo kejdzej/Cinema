@@ -19,11 +19,11 @@ export default function Login(){
     try {
       const res = await api.post('/auth/login', { email, password })
       login(res.data)
-      showToast('success', 'Success')
+      showToast('success', 'Zalogowano pomyślnie')
       //navigate('/dashboard')
       navigate('/')
     } catch (e) {
-      showToast('error', e?.response?.data?.message || 'Bład')
+      showToast('error', e?.response?.data?.message || 'Błąd logowania')
     } finally {
       setLoading(false)
     }
@@ -31,16 +31,16 @@ export default function Login(){
 
   return (
     <div className="container" style={{maxWidth:520}}>
-      <h1>Вход</h1>
+      <h1>Logowanie</h1>
       <div className="space"></div>
       <form onSubmit={onSubmit} className="card">
         <label>Email</label>
         <input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
         <div className="space"></div>
-        <label>Пароль</label>
+        <label>Hasło</label>
         <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" />
         <div className="space"></div>
-        <button className="btn" disabled={loading}>{loading ? 'Входим...' : 'Войти'}</button>
+        <button className="btn" disabled={loading}>{loading ? 'Logowanie...' : 'Zaloguj się'}</button>
       </form>
       <div className="space"></div>
       <div className="card">Nie masz konto? <Link to="/register">Zarejestruj się</Link></div>

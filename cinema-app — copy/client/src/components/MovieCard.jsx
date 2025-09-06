@@ -1,10 +1,9 @@
 import SessionButton from "./SessionButton.jsx"
 
 const posters = {
-  "Openheimer": "/posters/oppenheimer.jpeg",
-  "Barbie": "/posters/barbie.webp",
-  "Lilo&Stitch": "/posters/lilo-stitch.jpg",
-  "Minecraft movie": "/posters/minecraft.jpg",
+  "Interstellar": "/posters/interstellar.jpeg",
+  "The Matrix": "/posters/matrix.jpg",    
+  "Gladiator": "/posters/gladiator.jpg",   
 }
 
 export default function MovieCard({ movie }) {

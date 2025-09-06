@@ -9,7 +9,7 @@ export default function Dashboard() {
   useEffect(() => {
     api.get("/tickets/mine")
       .then(res => setMyTickets(res.data))
-      .catch(() => showToast("error", "Ошибка загрузки билетов"))
+      .catch(() => showToast("error", "Błąd ładowania biletów"))
   }, [])
 
   return (
@@ -26,10 +26,10 @@ export default function Dashboard() {
           <div key={t.id} className="card">
             <div><b>{t.title}</b></div>
             <div style={{ opacity: .8 }}>
-              {new Date(t.datetime).toLocaleString("ru-RU")}
+              {new Date(t.datetime).toLocaleString("pl-PL")}
             </div>
             <div>Miejsca: {t.seats}</div>
-            <div>Cena: {t.price} $</div>
+            <div>Cena: {t.price} zł</div>
           </div>
         ))}
       </div>

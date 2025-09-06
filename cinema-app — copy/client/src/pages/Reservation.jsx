@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { api } from "../services/api.js"
 import { useToast } from "../App.jsx"
 
@@ -10,6 +10,7 @@ export default function Reservation() {
   const [selectedSeats, setSelectedSeats] = useState([])
   const [bookedSeats, setBookedSeats] = useState([]) // miejsca juz zajete
   const { showToast } = useToast()
+  const navigate = useNavigate();
 
   // ladowanie seansu i miejsc zajetych 
   useEffect(() => {
@@ -36,16 +37,21 @@ export default function Reservation() {
 
   const purchase = async () => {
     try {
-      await api.post("/tickets/purchase", {
+      // Najpierw utwórz bilet w bazie danych
+      const response = await api.post("/tickets/purchase", {
         session_id: session.id,
         seats: selectedSeats
-      })
-      showToast("success", "Gratulacja, kupiłes bilet")
-      setSelectedSeats([])
+      });
+      
+      const ticketId = response.data.ticket_id || response.data.id;
+      
+      // Przejdź do płatności z prawdziwym ticketId
+      navigate(`/payment/${selectedSeats.join(',')}?ticketId=${ticketId}`);
+      
     } catch (e) {
-      showToast("error", e?.response?.data?.message || "Bład zakupu")
+      showToast("error", e?.response?.data?.message || "Błąd zakupu");
     }
-  }
+  };
 
   if (loading) return <div className="container">Ładowanie...</div>
   if (!session) return <div className="container">Brak seansu</div>

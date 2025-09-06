@@ -4,10 +4,9 @@ import MovieCard from '../components/MovieCard.jsx'
 
 // słownik filmów
 const movies = {
-  1: { title: "Openheimer" },
-  2: { title: "Barbie" },
-  3: { title: "Lilo&Stitch" },
-  4: { title: "Minecraft" },
+  1: { title: "Interstellar" },
+  2: { title: "The Matrix" },
+  3: { title: "Gladiator" },
 }
 
 export default function Home() {
@@ -18,7 +17,7 @@ export default function Home() {
       .then(res => {
         const sessions = res.data
 
-        // gupowanie movie_id
+        // grupowanie movie_id
         const grouped = {}
         sessions.forEach(s => {
           if (!grouped[s.movie_id]) {

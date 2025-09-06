@@ -9,7 +9,7 @@ export default function SessionButton({ session }) {
 
   const handleClick = () => {
     if (!user) {
-      showToast("error", "Нужно войти в систему")
+      showToast("error", "Musisz się zalogować")
       navigate("/login")
     } else {
       navigate(`/reservation/${session.id}`) 
@@ -18,7 +18,7 @@ export default function SessionButton({ session }) {
 
   return (
     <button className="session-btn" onClick={handleClick}>
-      {new Date(session.datetime).toLocaleTimeString("ru-RU", {
+      {new Date(session.datetime).toLocaleTimeString("pl-PL", {
         hour: "2-digit",
         minute: "2-digit"
       })}
