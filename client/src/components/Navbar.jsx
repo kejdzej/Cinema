@@ -8,11 +8,11 @@ export default function Navbar() {
   return (
     <nav className="navbar">
   <div className="navbar-left">
-    <a href="#repertuar" className="brand">🎬 Cinema</a>
-    <a href="#repertuar">Repertuar</a>
-    <a href="#popcorn">Popcorn Bar</a>
-    <a href="#cennik">Cennik</a>
-    <a href="#aktualnosci">Aktualności</a>
+    <Link to="/" className="brand">🎬 Cinema</Link>
+    <Link to="/#repertuar">Repertuar</Link>
+    <Link to="/#popcorn">Popcorn Bar</Link>
+    <Link to="/#cennik">Cennik</Link>
+    <Link to="/#aktualnosci">Aktualności</Link>
     {user && <Link to="/dashboard">Moje zamówienia</Link>}
   </div>
 

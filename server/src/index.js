@@ -6,6 +6,7 @@ import movieRoutes from './routes/movies.js';
 import sessionRoutes from './routes/sessions.js';
 import ticketRoutes from './routes/tickets.js';
 import ordersRouter from "./routes/orders.js";
+import paymentsRouter from './routes/payments.js';
 
 dotenv.config();
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use("/api/orders", ordersRouter);
+app.use('/api/payments', paymentsRouter);
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {

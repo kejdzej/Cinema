@@ -11,6 +11,7 @@ import Reservation from "./pages/Reservation.jsx"
 import TicketDetails from "./pages/TicketDetails.jsx";
 
 import Orders from "./pages/Orders.jsx";
+import OrderDetails from "./components/OrderDetails.jsx";
 
 const ToastContext = createContext(null)
 export function useToast(){ return useContext(ToastContext) }
@@ -45,6 +46,18 @@ export default function App(){
     }
   }, [])
 
+  // Smooth scroll to section when navigating with hash (/#cennik etc.)
+  useEffect(()=>{
+    if (location.hash){
+      const el = document.querySelector(location.hash)
+      if (el){
+        setTimeout(()=> el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+      }
+    } else {
+      window.scrollTo({ top: 0 })
+    }
+  }, [location.pathname, location.hash])
+
   const login = (payload)=>{
     setUser(payload.user)
     localStorage.setItem('cinema_user', JSON.stringify(payload.user))
@@ -59,7 +72,7 @@ export default function App(){
   }
 
   // ✅ список страниц где Navbar не нужен
-  const noNavbarRoutes = ["/dashboard", "/reservation", "/ticket"]
+  const noNavbarRoutes = ["/reservation", "/ticket"]
 
   const hideNavbar = noNavbarRoutes.some(r => location.pathname.startsWith(r))
 

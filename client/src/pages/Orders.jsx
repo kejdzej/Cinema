@@ -23,16 +23,11 @@ export default function Orders() {
           <ul>
             {order.items.map(i => (
               <li key={i.id}>
-                {i.qty} × {i.name} = {i.price * i.qty} zł
+                {i.qty} × {i.name} = {(i.price * i.qty).toFixed(2)} zł
               </li>
             ))}
           </ul>
           <h4>Razem: {order.total} zł</h4>
-          <img
-            src={`${api.defaults.baseURL}/orders/${order.id}/qr`}
-            alt="QR"
-            style={{ width: 150, marginTop: "10px" }}
-          />
         </div>
       ))}
     </div>

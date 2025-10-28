@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { api } from "../services/api.js"
+import PaymentForm from "../components/PaymentForm.jsx"
 import { useToast } from "../App.jsx"
 
 export default function Reservation() {
@@ -9,6 +10,7 @@ export default function Reservation() {
   const [loading, setLoading] = useState(true)
   const [selectedSeats, setSelectedSeats] = useState([])
   const [bookedSeats, setBookedSeats] = useState([]) // miejsca juz zajete
+  const [clientSecret, setClientSecret] = useState(null)
   const { showToast } = useToast()
   const navigate = useNavigate();
 
@@ -43,9 +45,16 @@ export default function Reservation() {
     });
 
     console.log("purchase() RESPONSE", response.data);
-
-    showToast("success", "Bilet kupiony!");
-    navigate("/dashboard");   // 👈 отправляем сразу на список билетов
+    // Stwórz PaymentIntent po zakupie biletu
+    const amountPln = response.data.amount
+    const amountCents = Math.round(Number(amountPln) * 100)
+    const pi = await api.post('/payments/create-payment-intent', {
+      amount: amountCents,
+      currency: 'pln',
+      ticketId: response.data.ticket_id
+    })
+    setClientSecret(pi.data.clientSecret)
+    showToast("success", "Bilet utworzony, przejdź do płatności");
   } catch (e) {
     console.error("purchase() ERROR", e);
     showToast("error", e?.response?.data?.message || "Błąd zakupu");
@@ -98,7 +107,7 @@ export default function Reservation() {
     <div className="reservation-right">
       <h2>Mój wybór</h2>
       <p>Miejsca: {selectedSeats.join(", ") || "nie wybrałeś"}</p>
-      <p>Cena: {selectedSeats.length * session.price} $</p>
+      <p>Cena: {selectedSeats.length * session.price} zł</p>
       <button
   className="btn"
   disabled={!selectedSeats.length}
@@ -109,6 +118,18 @@ export default function Reservation() {
 >
   Kupić
 </button>
+      {clientSecret && (
+        <div style={{marginTop: 16}}>
+          <PaymentForm
+            clientSecret={clientSecret}
+            amountPln={selectedSeats.length * session.price}
+            onSuccess={() => {
+              showToast('success', 'Płatność zakończona!')
+              navigate('/dashboard')
+            }}
+          />
+        </div>
+      )}
     </div>
   </div>
 )

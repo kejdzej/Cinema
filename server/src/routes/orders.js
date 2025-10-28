@@ -31,13 +31,17 @@ router.get("/", authRequired, async (req, res) => {
       [req.user.id]
     );
 
-    const result = rows.map(r => ({
-      id: r.id,
-      items: JSON.parse(r.items),
-      total: r.total,
-      status: r.status,
-      created_at: r.created_at
-    }));
+    const result = rows.map(r => {
+      let parsedItems = [];
+      try { parsedItems = JSON.parse(r.items) } catch { parsedItems = [] }
+      return {
+        id: r.id,
+        items: parsedItems,
+        total: r.total,
+        status: r.status,
+        created_at: r.created_at
+      }
+    });
 
     res.json(result);
   } catch (e) {
@@ -59,9 +63,13 @@ router.get("/:id", authRequired, async (req, res) => {
     }
 
     const order = rows[0];
+    
+    let parsedItems = [];
+    try { parsedItems = JSON.parse(order.items) } catch { parsedItems = [] }
+
     const data = {
       id: order.id,
-      items: JSON.parse(order.items),
+      items: parsedItems,
       total: order.total,
       date: order.created_at
     };
@@ -71,7 +79,7 @@ router.get("/:id", authRequired, async (req, res) => {
 
     res.json({
       id: order.id,
-      items: JSON.parse(order.items),
+      items: parsedItems,
       total: order.total,
       status: order.status,
       created_at: order.created_at,
@@ -80,6 +88,31 @@ router.get("/:id", authRequired, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Błąd pobierania zamówienia" });
+  }
+});
+
+// Dodaj endpoint do zmiany statusu zamówienia
+router.patch('/:id/status', authRequired, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = new Set(['pending', 'paid', 'failed', 'completed']);
+    if (!allowed.has(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    
+    const [result] = await pool.query(
+      'UPDATE orders SET status = ? WHERE id = ? AND user_id = ? LIMIT 1',
+      [status, req.params.id, req.user.id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Błąd zmiany statusu' });
   }
 });
 

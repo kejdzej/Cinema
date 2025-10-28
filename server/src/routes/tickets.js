@@ -24,10 +24,10 @@ router.post("/purchase", authRequired, async (req, res) => {
 
     const totalPrice = session.price * seatArr.length;
 
-    // создаём билет сразу в статусе "confirmed"
+    // tworzymy bilet zgodnie ze schematem (bez kolumny 'status')
     const [result] = await pool.query(
-      "INSERT INTO tickets (session_id, user_id, seats, price, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-      [session_id, req.user.id, seatStr, totalPrice, "confirmed"]
+      "INSERT INTO tickets (session_id, user_id, seats, price) VALUES (?, ?, ?, ?)",
+      [session_id, req.user.id, seatStr, totalPrice]
     );
 
     res.json({

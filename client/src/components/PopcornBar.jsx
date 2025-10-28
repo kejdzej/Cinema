@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useToast, useAuth } from "../App.jsx"
 import { api } from "../services/api.js"
+import PaymentForm from "./PaymentForm.jsx"
 
 export default function PopcornBar() {
   const products = [
@@ -29,6 +30,9 @@ export default function PopcornBar() {
     setCart(prev => prev.filter(i => i.id !== id))
   }
 
+  const [clientSecret, setClientSecret] = useState(null)
+  const [orderId, setOrderId] = useState(null)
+
   const checkout = async () => {
     if (!user) {
       showToast("error", "Musisz się zalogować aby kupić")
@@ -36,9 +40,16 @@ export default function PopcornBar() {
     }
     try {
       const total = cart.reduce((sum, p) => sum + p.price * p.qty, 0)
-      await api.post("/orders", { items: cart, total })
-      showToast("success", "Zakup zakończony pomyślnie")
-      setCart([])
+      const orderRes = await api.post("/orders", { items: cart, total })
+      setOrderId(orderRes.data.order_id)
+      // Stripe PaymentIntent dla total (w groszach)
+      const cents = Math.round(total * 100)
+      const pi = await api.post('/payments/create-payment-intent', {
+        amount: cents,
+        currency: 'pln'
+      })
+      setClientSecret(pi.data.clientSecret)
+      showToast("success", "Zamówienie utworzone, przejdź do płatności")
     } catch {
       showToast("error", "Błąd przy zakupie")
     }
@@ -74,6 +85,29 @@ export default function PopcornBar() {
           <hr />
           <h3>Razem: {total} zł</h3>
           <button className="btn" onClick={checkout}>Kup teraz</button>
+          {clientSecret && (
+            <div style={{marginTop:16}}>
+              <PaymentForm
+                clientSecret={clientSecret}
+                amountPln={total}
+                onSuccess={() => {
+                  (async ()=>{
+                    try {
+                      if (orderId){
+                        await api.patch(`/orders/${orderId}/status`, { status: 'completed' })
+                      }
+                      showToast('success', 'Płatność zakończona!')
+                      setCart([])
+                      setClientSecret(null)
+                      setOrderId(null)
+                    } catch (e) {
+                      showToast('error', 'Nie udało się zaktualizować statusu zamówienia')
+                    }
+                  })()
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </>
