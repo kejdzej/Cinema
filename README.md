@@ -24,10 +24,9 @@ cd client
 npm install
 npm run dev
 ```
-Откройте http://localhost:5173
+ http://localhost:5173
 
-######
-- Działa rejestracja i logowanie, zapis tego w bazie
-- JWT w `localStorage` 
-- rezerwacja miejsc
-- Prykladowy zakup biletow
+###### co dodalam:
+- jest wyszukiwarka
+- jest chatbot( limit sie skonczyl, ale ma dzialac)
+- mozliwosz pobrania PDF biletu
