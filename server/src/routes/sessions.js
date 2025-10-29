@@ -40,4 +40,25 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// szuka najblizszego seansu (z bazy)
+router.get("/by-movie/:movieId", async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const [rows] = await pool.query(
+      "SELECT * FROM sessions WHERE movie_id = ? ORDER BY datetime ASC LIMIT 1",
+      [movieId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Brak seansów" });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("❌ Błąd pobierania seansu:", err);
+    res.status(500).json({ message: "Błąd serwera" });
+  }
+});
+
+
 export default router;
