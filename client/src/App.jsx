@@ -9,9 +9,10 @@ import NotFound from './pages/NotFound.jsx'
 import { api, setAuthToken, getToken, clearToken } from './services/api.js'
 import Reservation from "./pages/Reservation.jsx"
 import TicketDetails from "./pages/TicketDetails.jsx";
-
+import OrderDetails from "./pages/OrderDetails.jsx";
 import Orders from "./pages/Orders.jsx";
-import OrderDetails from "./components/OrderDetails.jsx";
+
+import ChatBot from "./components/ChatBot.jsx";
 
 const ToastContext = createContext(null)
 export function useToast(){ return useContext(ToastContext) }
@@ -82,16 +83,6 @@ export default function App(){
         
         {!hideNavbar && <Navbar />}
 
-        {hideNavbar && (
-  <div className="back-header">
-    <button
-      onClick={() => navigate(-1)}
-      className="back-btn"
-    >
-      ← Назад
-    </button>
-  </div>
-)}
 
         <Routes>
           <Route path="/" element={<Home />} />
@@ -101,8 +92,10 @@ export default function App(){
           <Route path="/reservation/:id" element={<Reservation />} />
           <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
+          <Route path="/order/:id" element={<OrderDetails />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ChatBot />
 
         {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
       </AuthContext.Provider>
