@@ -46,7 +46,8 @@ export default function TicketDetails() {
         </div>
       </div>
       <button
-  onClick={() => window.open(`${import.meta.env.VITE_API_URL}/pdf/ticket/${ticket.id}`, "_blank")}
+  onClick={() => window.open(`${import.meta.env.VITE_API_URL}/api/pdf/ticket/${ticket.id}`, "_blank")}
+
   className="btn btn-primary"
 >
   📄 Pobierz bilet w PDF
