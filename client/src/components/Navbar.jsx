@@ -1,14 +1,20 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../App";
 import { useState, useEffect } from "react";
 import { api } from "../services/api.js";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
+
+  // Warunki dla różnych stron
+  const isHomePage = location.pathname === '/';
+  const isAdminPanel = location.pathname.startsWith('/admin');
+  const isDashboard = location.pathname === '/dashboard';
 
   useEffect(() => {
     if (query.trim().length > 1) {
@@ -35,7 +41,6 @@ export default function Navbar() {
     setShowResults(false);
 
     try {
-      // 🔹 Получаем ближайший сеанс по movie_id
       const res = await api.get(`/sessions/by-movie/${movie.id}`);
       if (res.data?.id) {
         navigate(`/reservation/${res.data.id}`);
@@ -48,42 +53,79 @@ export default function Navbar() {
     }
   };
 
+  // Funkcja do przewijania do sekcji
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const navbarHeight = 80;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <nav className="navbar relative">
       <div className="navbar-left">
-        <a href="#repertuar" className="brand">🎬 Cinema</a>
-        <a href="#repertuar">Repertuar</a>
-        <a href="#popcorn">Popcorn Bar</a>
-        <a href="#cennik">Cennik</a>
-        <a href="#aktualnosci">Aktualności</a>
-        {user && <Link to="/dashboard">Moje zamówienia</Link>}
-      </div>
-
-      {/* 🔍 wyszukiwarka */}
-      <div className="navbar-center relative">
-        <input
-          type="text"
-          placeholder="Szukaj filmu..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="search-input"
-        />
-
-        {showResults && results.length > 0 && (
-          <div className="search-results">
-            {results.map((m) => (
-              <div
-                key={m.id}
-                className="search-item"
-                onClick={() => handleSelect(m)}
-              >
-                <img src={m.poster} alt={m.title} width="40" />
-                <span>{m.title}</span>
-              </div>
-            ))}
-          </div>
+        <Link to="/" className="brand">🎬 Cinema</Link>
+        
+        {/* Linki do sekcji tylko na stronie głównej */}
+        {isHomePage && (
+          <>
+            <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
+            <span onClick={() => scrollToSection('popcorn')} style={{cursor: 'pointer'}}>Popcorn Bar</span>
+            <span onClick={() => scrollToSection('cennik')} style={{cursor: 'pointer'}}>Cennik</span>
+            <span onClick={() => scrollToSection('aktualnosci')} style={{cursor: 'pointer'}}>Aktualności</span>
+          </>
+        )}
+        
+        {/* Na innych stronach (oprócz admin) pokaż link do strony głównej */}
+        {!isHomePage && !isAdminPanel && (
+          <Link to="/">Strona główna</Link>
+        )}
+        
+        {/* W panelu admin przycisk powrotu */}
+        {isAdminPanel && (
+          <span style={{cursor: 'pointer'}} onClick={() => window.history.back()}>← Powrót</span>
+        )}
+        
+        {user && !isAdminPanel && !isDashboard && <Link to="/dashboard">Moje zamówienia</Link>}
+        {user && user.role === 'admin' && !isAdminPanel && (
+          <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
         )}
       </div>
+
+      {/* Wyszukiwarka tylko na stronie głównej */}
+      {isHomePage && (
+        <div className="navbar-center relative">
+          <input
+            type="text"
+            placeholder="Szukaj filmu..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="search-input"
+          />
+
+          {showResults && results.length > 0 && (
+            <div className="search-results">
+              {results.map((m) => (
+                <div
+                  key={m.id}
+                  className="search-item"
+                  onClick={() => handleSelect(m)}
+                >
+                  <img src={m.poster} alt={m.title} width="40" />
+                  <span>{m.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="navbar-right">
         {!user && <Link to="/login" className="btn-ghost">Logowanie</Link>}

@@ -5,6 +5,7 @@ import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
 import NotFound from './pages/NotFound.jsx'
 import { api, setAuthToken, getToken, clearToken } from './services/api.js'
 import Reservation from "./pages/Reservation.jsx"
@@ -63,6 +64,13 @@ export default function App(){
     setUser(payload.user)
     localStorage.setItem('cinema_user', JSON.stringify(payload.user))
     setAuthToken(payload.token)
+    
+    // Jeśli użytkownik ma rolę admin, dodaj ją do localStorage
+    if (payload.user && payload.user.role) {
+      const updatedUser = { ...payload.user, role: payload.user.role }
+      setUser(updatedUser)
+      localStorage.setItem('cinema_user', JSON.stringify(updatedUser))
+    }
   }
 
   const logout = ()=>{
@@ -73,8 +81,7 @@ export default function App(){
   }
 
   // ✅ список страниц где Navbar не нужен
-  const noNavbarRoutes = ["/reservation", "/ticket"]
-
+  const noNavbarRoutes = ["/reservation", "/ticket"] 
   const hideNavbar = noNavbarRoutes.some(r => location.pathname.startsWith(r))
 
   return (
@@ -89,6 +96,7 @@ export default function App(){
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard/></ProtectedRoute>} />
           <Route path="/reservation/:id" element={<Reservation />} />
           <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
