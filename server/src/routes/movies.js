@@ -40,29 +40,12 @@ router.get("/", async (req, res) => {
       "marvel": "/posters/marvel.jpg",
     };
 
-    // ✅ NAPRAWIONA LOGIKA POSTER:
-    // 1. Użyj poster z bazy danych jeśli istnieje
-    // 2. Jeśli nie - użyj posterMap
-    // 3. Jeśli nie ma w posterMap - użyj placeholder
     const withPosters = rows.map((m) => ({
       ...m,
-      poster: m.poster || posterMap[(m.title || "").toLowerCase()] || "/posters/placeholder.jpg",
+      poster: posterMap[(m.title || "").toLowerCase()] || "/posters/popcorn.jpg",
     }));
 
     res.json(withPosters);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// pojedynczy film
-router.get("/:id", async (req, res) => {
-  try {
-    const [rows] = await pool.query("SELECT * FROM movies WHERE id = ?", [req.params.id]);
-    if (!rows.length) return res.status(404).json({ message: "Film nie znaleziony" });
-
-    res.json(rows[0]);
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Server error" });

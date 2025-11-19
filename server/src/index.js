@@ -7,9 +7,8 @@ import sessionRoutes from './routes/sessions.js';
 import ticketRoutes from './routes/tickets.js';
 import ordersRouter from "./routes/orders.js";
 import paymentsRouter from './routes/payments.js';
-import assistantRouter from "./routes/assistant.js";
+import assistantRouter from "./routes/assistant.js"; //chatbot_ai
 import pdfRouter from "./routes/pdf.js";
-import adminRouter from "./routes/admin.js";
 
 dotenv.config();
 const app = express();
@@ -30,7 +29,6 @@ app.use("/api/orders", ordersRouter);
 app.use('/api/payments', paymentsRouter);
 app.use("/api/assistant", assistantRouter);
 app.use("/api/pdf", pdfRouter);
-app.use('/api/admin', adminRouter);
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
