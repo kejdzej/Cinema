@@ -97,6 +97,12 @@ export default function Navbar() {
         {user && user.role === 'admin' && !isAdminPanel && (
           <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
         )}
+
+        {user && (
+          <Link to="/loyalty">🌟 Stały Klient</Link> 
+        )}
+
+
       </div>
 
       {/* Wyszukiwarka tylko na stronie głównej */}

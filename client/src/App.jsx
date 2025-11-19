@@ -15,6 +15,8 @@ import Orders from "./pages/Orders.jsx";
 
 import ChatBot from "./components/ChatBot.jsx";
 
+import Loyalty from "./pages/Loyalty.jsx"
+
 const ToastContext = createContext(null)
 export function useToast(){ return useContext(ToastContext) }
 
@@ -101,6 +103,7 @@ export default function App(){
           <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
           <Route path="/order/:id" element={<OrderDetails />} />
+          <Route path="/loyalty" element={<ProtectedRoute><Loyalty/></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <ChatBot />
