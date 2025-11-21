@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
-
+import QRCode from "qrcode";
 
 const router = Router();
 
@@ -24,21 +24,37 @@ router.post("/purchase", authRequired, async (req, res) => {
 
     const totalPrice = session.price * seatArr.length;
 
-    // tworzymy bilet zgodnie ze schematem (bez kolumny 'status')
+    // tworzymy bilet
     const [result] = await pool.query(
       "INSERT INTO tickets (session_id, user_id, seats, price) VALUES (?, ?, ?, ?)",
       [session_id, req.user.id, seatStr, totalPrice]
     );
 
+    // **Начисляем 100 пунктов за покупку**
+    const pointsToAdd = 100;
+    await pool.query(
+      "UPDATE users SET points = points + ? WHERE id = ?",
+      [pointsToAdd, req.user.id]
+    );
+
+    // Записываем историю начисления очков
+    await pool.query(
+  "INSERT INTO loyalty_history (user_id, change_amount, description) VALUES (?, ?, ?)",
+  [req.user.id, pointsToAdd, 'Zakup biletu']
+);
+
+
     res.json({
       ticket_id: result.insertId,
       amount: totalPrice,
       status: "confirmed",
+      pointsAdded: pointsToAdd
     });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: "Server error" });
-  }
+  console.error("PURCHASE ERROR:", e.sqlMessage || e);
+  res.status(500).json({ message: e.sqlMessage || "Server error" });
+}
+
 });
 
 // moje bilety
@@ -81,8 +97,6 @@ router.get("/session/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-import QRCode from "qrcode";
 
 // Pobierz bilet po ID
 router.get("/:id", authRequired, async (req, res) => {
