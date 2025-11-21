@@ -1,15 +1,16 @@
 import axios from 'axios'
 
 export const api = axios.create({
-  baseURL: "http://localhost:4000/api"
-})
+  baseURL: "http://localhost:4000/api",
+  withCredentials: true, // если используется авторизация
+});
 
-export function setAuthToken(token){
-  if (token){
-    localStorage.setItem('cinema_token', token)
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem('cinema_token', token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
-    delete api.defaults.headers.common['Authorization']
+    delete api.defaults.headers.common['Authorization'];
   }
 }
 
