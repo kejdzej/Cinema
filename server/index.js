@@ -10,6 +10,9 @@ import paymentsRouter from './routes/payments.js';
 import assistantRouter from "./routes/assistant.js";
 import pdfRouter from "./routes/pdf.js";
 import adminRouter from "./routes/admin.js";
+import reportsRouter from "./routes/reports.js";
+import employeeRouter from "./routes/employee.js";
+import recommendationsRouter from "./routes/recommendations.js";
 
 import loyaltyRoutes from "./routes/loyalty.js";
 console.log('--- LOYALTY ROUTER TYPE:', typeof loyaltyRoutes, '---');
@@ -34,6 +37,9 @@ app.use('/api/payments', paymentsRouter);
 app.use("/api/assistant", assistantRouter);
 app.use("/api/pdf", pdfRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/reports', reportsRouter);
+app.use('/api/employee', employeeRouter);
+app.use('/api/recommendations', recommendationsRouter);
 
 app.use("/api/loyalty", loyaltyRoutes);
 

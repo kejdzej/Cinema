@@ -79,7 +79,13 @@ export default function Reservation() {
   <div className="container reservation">
     <div className="reservation-left">
       <h1>{session.title}</h1>
-      <p>{new Date(session.datetime).toLocaleString("ru-RU")}</p>
+      <p>{new Date(session.datetime).toLocaleString("pl-PL")}</p>
+      {session.hall_name && (
+        <p style={{marginTop: '8px', opacity: 0.8}}>
+          🎭 Sala: <strong>{session.hall_name}</strong>
+          {session.hall_capacity && ` (${session.hall_capacity} miejsc)`}
+        </p>
+      )}
 
       <div className="screen">ekran</div>
 

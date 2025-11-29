@@ -6,6 +6,7 @@ import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
+import EmployeeDashboard from './pages/EmployeeDashboard.jsx'
 import NotFound from './pages/NotFound.jsx'
 import { api, setAuthToken, getToken, clearToken } from './services/api.js'
 import Reservation from "./pages/Reservation.jsx"
@@ -16,6 +17,7 @@ import Orders from "./pages/Orders.jsx";
 import ChatBot from "./components/ChatBot.jsx";
 import LoyaltyPoints from './pages/LoyaltyPoints.jsx';
 import RedeemRewards from './pages/RedeemRewards.jsx'; // Добавляем компонент для обмена наградами
+import Recommendations from './pages/Recommendations.jsx';
 
 const ToastContext = createContext(null)
 export function useToast(){ return useContext(ToastContext) }
@@ -99,16 +101,19 @@ export default function App(){
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
-          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard/></ProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard/></ProtectedRoute>} />
+          <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard/></ProtectedRoute>} />
           <Route path="/reservation/:id" element={<Reservation />} />
           <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
           {/* Защищаем OrderDetails, так как это личные данные */}
           <Route path="/order/:id" element={<ProtectedRoute><OrderDetails/></ProtectedRoute>} />
           {/* Маршрут для LoyaltyPoints */}
-          <Route path="/loyalty" element={<ProtectedRoute><LoyaltyPoints/></ProtectedRoute>} />
-          {/* Маршрут для RedeemRewards */}
-          <Route path="/rewards" element={<ProtectedRoute><RedeemRewards/></ProtectedRoute>} />
+          <Route path="/loyalty" element={<ProtectedRoute><LoyaltyPoints/></ProtectedRoute>} />
+          {/* Маршрут для RedeemRewards */}
+          <Route path="/rewards" element={<ProtectedRoute><RedeemRewards/></ProtectedRoute>} />
+          {/* Маршрут для Recommendations */}
+          <Route path="/recommendations" element={<ProtectedRoute><Recommendations/></ProtectedRoute>} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

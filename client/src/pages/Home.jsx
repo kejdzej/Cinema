@@ -65,18 +65,27 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="grid">
-          {filteredMovies.map(m => {
-            const movieSessions = filteredSessions.filter(s => s.movie_id === m.id)
-            if (!movieSessions.length) return null
-            return (
-              <MovieCard
-                key={m.id}
-                movie={{...m, times: movieSessions}}
-              />
-            )
-          })}
-        </div>
+        {filteredMovies.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+            <h3>Brak seansów na wybrany dzień</h3>
+            <p style={{ opacity: 0.8, marginTop: '10px' }}>
+              Wybierz inny dzień lub sprawdź repertuar później.
+            </p>
+          </div>
+        ) : (
+          <div className="grid">
+            {filteredMovies.map(m => {
+              const movieSessions = filteredSessions.filter(s => s.movie_id === m.id)
+              if (!movieSessions.length) return null
+              return (
+                <MovieCard
+                  key={m.id}
+                  movie={{...m, times: movieSessions}}
+                />
+              )
+            })}
+          </div>
+        )}
       </section>
 
       {/* --- Popcorn Bar --- */}

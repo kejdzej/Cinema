@@ -67,9 +67,10 @@ router.delete('/movies/:id', authRequired, adminRequired, async (req, res) => {
 router.get('/sessions', authRequired, adminRequired, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT s.*, m.title as movie_title 
+      SELECT s.*, m.title as movie_title, h.name as hall_name, h.capacity as hall_capacity
       FROM sessions s 
       JOIN movies m ON s.movie_id = m.id 
+      LEFT JOIN cinema_halls h ON s.hall_id = h.id
       ORDER BY s.datetime DESC
     `);
     console.log('Sessions loaded:', rows.length);
@@ -83,14 +84,14 @@ router.get('/sessions', authRequired, adminRequired, async (req, res) => {
 // Dodaj seans
 router.post('/sessions', authRequired, adminRequired, async (req, res) => {
   try {
-    const { movie_id, datetime, price } = req.body;
+    const { movie_id, datetime, price, hall_id } = req.body;
     if (!movie_id || !datetime || !price) {
       return res.status(400).json({ message: 'Wszystkie pola są wymagane' });
     }
 
     const [result] = await pool.query(
-      'INSERT INTO sessions (movie_id, datetime, price) VALUES (?, ?, ?)',
-      [movie_id, datetime, price]
+      'INSERT INTO sessions (movie_id, datetime, price, hall_id) VALUES (?, ?, ?, ?)',
+      [movie_id, datetime, price, hall_id || null]
     );
     res.json({ message: 'Seans dodany', id: result.insertId });
   } catch (e) {
@@ -102,10 +103,10 @@ router.post('/sessions', authRequired, adminRequired, async (req, res) => {
 // Edytuj seans
 router.put('/sessions/:id', authRequired, adminRequired, async (req, res) => {
   try {
-    const { movie_id, datetime, price } = req.body;
+    const { movie_id, datetime, price, hall_id } = req.body;
     const [result] = await pool.query(
-      'UPDATE sessions SET movie_id = ?, datetime = ?, price = ? WHERE id = ?',
-      [movie_id, datetime, price, req.params.id]
+      'UPDATE sessions SET movie_id = ?, datetime = ?, price = ?, hall_id = ? WHERE id = ?',
+      [movie_id, datetime, price, hall_id || null, req.params.id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Seans nie znaleziony' });
     res.json({ message: 'Seans zaktualizowany' });
@@ -143,7 +144,7 @@ router.get('/users', authRequired, adminRequired, async (req, res) => {
 router.patch('/users/:id/role', authRequired, adminRequired, async (req, res) => {
   try {
     const { role } = req.body;
-    if (!['user', 'admin'].includes(role)) {
+    if (!['user', 'employee', 'admin'].includes(role)) {
       return res.status(400).json({ message: 'Nieprawidłowa rola' });
     }
 
@@ -208,6 +209,66 @@ router.delete('/users/:id', authRequired, adminRequired, async (req, res) => {
     res.json({ message: 'Użytkownik usunięty' });
   } catch (e) {
     console.error('Delete user error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+// ========== ZARZĄDZANIE SALAMI KINOWYMI ==========
+
+// Wszystkie sale
+router.get('/halls', authRequired, adminRequired, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM cinema_halls ORDER BY name ASC');
+    res.json(rows);
+  } catch (e) {
+    console.error('Halls error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+// Dodaj salę
+router.post('/halls', authRequired, adminRequired, async (req, res) => {
+  try {
+    const { name, capacity, description } = req.body;
+    if (!name || !capacity) {
+      return res.status(400).json({ message: 'Nazwa i pojemność są wymagane' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO cinema_halls (name, capacity, description) VALUES (?, ?, ?)',
+      [name, parseInt(capacity), description || '']
+    );
+    res.json({ message: 'Sala dodana', id: result.insertId });
+  } catch (e) {
+    console.error('Add hall error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+// Edytuj salę
+router.put('/halls/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    const { name, capacity, description } = req.body;
+    const [result] = await pool.query(
+      'UPDATE cinema_halls SET name = ?, capacity = ?, description = ? WHERE id = ?',
+      [name, parseInt(capacity), description || '', req.params.id]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Sala nie znaleziona' });
+    res.json({ message: 'Sala zaktualizowana' });
+  } catch (e) {
+    console.error('Update hall error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+// Usuń salę
+router.delete('/halls/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM cinema_halls WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Sala nie znaleziona' });
+    res.json({ message: 'Sala usunięta' });
+  } catch (e) {
+    console.error('Delete hall error:', e);
     res.status(500).json({ message: 'Błąd serwera', error: e.message });
   }
 });

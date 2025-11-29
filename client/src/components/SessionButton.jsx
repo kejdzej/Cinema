@@ -16,12 +16,15 @@ export default function SessionButton({ session }) {
     }
   }
 
+  const timeStr = new Date(session.datetime).toLocaleTimeString("pl-PL", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
   return (
-    <button className="session-btn" onClick={handleClick}>
-      {new Date(session.datetime).toLocaleTimeString("pl-PL", {
-        hour: "2-digit",
-        minute: "2-digit"
-      })}
+    <button className="session-btn" onClick={handleClick} title={session.hall_name ? `Sala: ${session.hall_name}` : ''}>
+      {timeStr}
+      {session.hall_name && <span className="hall-badge">{session.hall_name}</span>}
     </button>
   )
 }

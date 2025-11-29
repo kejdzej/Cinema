@@ -10,14 +10,16 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [halls, setHalls] = useState([]);
+  const [reports, setReports] = useState({ sales: null, occupancy: null, popularity: null });
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'movie' lub 'session'
+  const [modalType, setModalType] = useState(''); // 'movie', 'session', lub 'hall'
   const [editingItem, setEditingItem] = useState(null);
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  // Formularz dla filmów i seansów
+  // Formularz dla filmów, seansów i sal
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -25,17 +27,51 @@ export default function AdminDashboard() {
     poster: '',
     movie_id: '',
     datetime: '',
-    price: ''
+    price: '',
+    hall_id: '',
+    name: '',
+    capacity: ''
   });
 
+  // Załaduj wszystkie dane na początku (dla kafelków statystyk)
   useEffect(() => {
+    if (user && user.role === 'admin') {
+      // Załaduj wszystkie dane równolegle dla kafelków
+      Promise.all([
+        api.get('/admin/movies').catch(() => ({ data: [] })),
+        api.get('/admin/sessions').catch(() => ({ data: [] })),
+        api.get('/admin/tickets').catch(() => ({ data: [] })),
+        api.get('/admin/users').catch(() => ({ data: [] })),
+        api.get('/admin/halls').catch(() => ({ data: [] })),
+        api.get('/admin/orders').catch(() => ({ data: [] }))
+      ]).then(([moviesRes, sessionsRes, ticketsRes, usersRes, hallsRes, ordersRes]) => {
+        setMovies(moviesRes.data || []);
+        setSessions(sessionsRes.data || []);
+        setTickets(ticketsRes.data || []);
+        setUsers(usersRes.data || []);
+        setHalls(hallsRes.data || []);
+        setOrders(ordersRes.data || []);
+      });
+    }
+  }, [user]);
+
+  // Załaduj dane dla aktywnej zakładki
+  useEffect(() => {
+    // Zamykaj modal przy zmianie zakładki (NAJPIERW!)
+    setShowModal(false);
+    setEditingItem(null);
+    setModalType('');
+    
     if (user && user.role === 'admin') {
       loadData(activeTab);
     }
   }, [activeTab, user]);
 
   const loadData = async (tab) => {
-    setLoading(true);
+    // Nie pokazuj loading dla raportów (żeby nie było ciemno)
+    if (tab !== 'reports') {
+      setLoading(true);
+    }
     try {
       switch (tab) {
         case 'movies':
@@ -58,11 +94,39 @@ export default function AdminDashboard() {
           const ticketsRes = await api.get('/admin/tickets');
           setTickets(ticketsRes.data);
           break;
+        case 'halls':
+          const hallsRes = await api.get('/admin/halls');
+          setHalls(hallsRes.data);
+          break;
+        case 'reports':
+          // Dla raportów ładuj dane bez loading state
+          try {
+            const [salesRes, occupancyRes, popularityRes] = await Promise.all([
+              api.get('/reports/sales').catch(() => ({ data: null })),
+              api.get('/reports/occupancy').catch(() => ({ data: [] })),
+              api.get('/reports/popularity').catch(() => ({ data: [] }))
+            ]);
+            setReports({
+              sales: salesRes.data,
+              occupancy: occupancyRes.data || [],
+              popularity: popularityRes.data || []
+            });
+          } catch (err) {
+            console.error('Reports error:', err);
+            setReports({
+              sales: null,
+              occupancy: [],
+              popularity: []
+            });
+          }
+          return; // Wyjdź wcześniej, żeby nie ustawić loading
       }
     } catch (error) {
       showToast('error', 'Błąd ładowania danych');
     } finally {
-      setLoading(false);
+      if (tab !== 'reports') {
+        setLoading(false);
+      }
     }
   };
 
@@ -111,7 +175,21 @@ export default function AdminDashboard() {
           poster: '',
           movie_id: item.movie_id || '',
           datetime: item.datetime ? new Date(item.datetime).toISOString().slice(0, 16) : '',
-          price: item.price || ''
+          price: item.price || '',
+          hall_id: item.hall_id || ''
+        });
+      } else if (type === 'hall') {
+        setFormData({
+          title: '',
+          description: '',
+          duration: '',
+          poster: '',
+          movie_id: '',
+          datetime: '',
+          price: '',
+          hall_id: '',
+          name: item.name || '',
+          capacity: item.capacity || ''
         });
       }
     } else {
@@ -123,7 +201,10 @@ export default function AdminDashboard() {
         poster: '',
         movie_id: '',
         datetime: '',
-        price: ''
+        price: '',
+        hall_id: '',
+        name: '',
+        capacity: ''
       });
     }
     setShowModal(true);
@@ -133,6 +214,19 @@ export default function AdminDashboard() {
     setShowModal(false);
     setEditingItem(null);
     setModalType('');
+    // Reset form data
+    setFormData({
+      title: '',
+      description: '',
+      duration: '',
+      poster: '',
+      movie_id: '',
+      datetime: '',
+      price: '',
+      hall_id: '',
+      name: '',
+      capacity: ''
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -166,7 +260,8 @@ export default function AdminDashboard() {
           await api.put(`/admin/sessions/${editingItem.id}`, {
             movie_id: parseInt(formData.movie_id),
             datetime: formData.datetime,
-            price: parseFloat(formData.price)
+            price: parseFloat(formData.price),
+            hall_id: formData.hall_id ? parseInt(formData.hall_id) : null
           });
           showToast('success', 'Seans zaktualizowany');
         } else {
@@ -174,11 +269,31 @@ export default function AdminDashboard() {
           await api.post('/admin/sessions', {
             movie_id: parseInt(formData.movie_id),
             datetime: formData.datetime,
-            price: parseFloat(formData.price)
+            price: parseFloat(formData.price),
+            hall_id: formData.hall_id ? parseInt(formData.hall_id) : null
           });
           showToast('success', 'Seans dodany');
         }
         loadData('sessions');
+      } else if (modalType === 'hall') {
+        if (editingItem) {
+          // Edycja sali
+          await api.put(`/admin/halls/${editingItem.id}`, {
+            name: formData.name,
+            capacity: parseInt(formData.capacity),
+            description: formData.description
+          });
+          showToast('success', 'Sala zaktualizowana');
+        } else {
+          // Dodanie sali
+          await api.post('/admin/halls', {
+            name: formData.name,
+            capacity: parseInt(formData.capacity),
+            description: formData.description
+          });
+          showToast('success', 'Sala dodana');
+        }
+        loadData('halls');
       }
       closeModal();
     } catch (error) {
@@ -196,13 +311,49 @@ export default function AdminDashboard() {
     );
   }
 
+  // Wymuś zamknięcie modala jeśli jesteśmy na raportach
+  useEffect(() => {
+    if (activeTab === 'reports' && showModal) {
+      setShowModal(false);
+      setEditingItem(null);
+      setModalType('');
+    }
+  }, [activeTab, showModal]);
+
   return (
     <div className="container">
-      
       <h1>🔧 Panel Administratora</h1>
+      
+      {/* Karty statystyk */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)', border: '1px solid rgba(102, 126, 234, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: '#667eea' }}>{movies.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Filmy</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.2) 100%)', border: '1px solid rgba(240, 147, 251, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: '#f093fb' }}>{sessions.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Seanse</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%)', border: '1px solid rgba(79, 172, 254, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: '#4facfe' }}>{tickets.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Bilety</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(67, 233, 123, 0.2) 0%, rgba(56, 249, 215, 0.2) 100%)', border: '1px solid rgba(67, 233, 123, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: '#43e97b' }}>{users.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Użytkownicy</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.1) 100%)', border: '1px solid rgba(250, 204, 21, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: 'var(--primary)' }}>{halls.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Sale</p>
+        </div>
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(255, 107, 107, 0.2) 0%, rgba(255, 159, 64, 0.2) 100%)', border: '1px solid rgba(255, 107, 107, 0.3)' }}>
+          <h3 style={{ margin: 0, fontSize: '2.5em', color: '#ff6b6b' }}>{orders.length}</h3>
+          <p style={{ margin: 0, opacity: 0.9 }}>Zamówienia</p>
+        </div>
+      </div>
 
       <div className="admin-tabs">
-        {['movies', 'sessions', 'users', 'orders', 'tickets'].map(tab => (
+        {['movies', 'sessions', 'halls', 'users', 'orders', 'tickets', 'reports'].map(tab => (
           <button
             key={tab}
             className={`btn ${activeTab === tab ? '' : 'btn-ghost'}`}
@@ -210,14 +361,16 @@ export default function AdminDashboard() {
           >
             {tab === 'movies' && '🎬 Filmy'}
             {tab === 'sessions' && '📅 Seanse'}
+            {tab === 'halls' && '🎭 Sale'}
             {tab === 'users' && '👥 Użytkownicy'}
             {tab === 'orders' && '🛒 Zamówienia'}
             {tab === 'tickets' && '🎫 Bilety'}
+            {tab === 'reports' && '📊 Raporty'}
           </button>
         ))}
       </div>
 
-      {loading && <div className="loading">Ładowanie...</div>}
+      {loading && activeTab !== 'reports' && <div className="loading">Ładowanie...</div>}
 
       {/* FILMY */}
       {activeTab === 'movies' && (
@@ -266,6 +419,7 @@ export default function AdminDashboard() {
                 <tr>
                   <th>Film</th>
                   <th>Data i czas</th>
+                  <th>Sala</th>
                   <th>Cena</th>
                   <th>Akcje</th>
                 </tr>
@@ -275,6 +429,7 @@ export default function AdminDashboard() {
                   <tr key={session.id}>
                     <td>{session.movie_title}</td>
                     <td>{new Date(session.datetime).toLocaleString('pl-PL')}</td>
+                    <td>{session.hall_name || 'Brak sali'}</td>
                     <td>{session.price} zł</td>
                     <td>
                       <button className="btn btn-ghost" onClick={() => openModal('session', session)}>
@@ -321,6 +476,7 @@ export default function AdminDashboard() {
                         onChange={(e) => changeUserRole(userItem.id, e.target.value)}
                       >
                         <option value="user">Użytkownik</option>
+                        <option value="employee">Pracownik</option>
                         <option value="admin">Administrator</option>
                       </select>
                     </td>
@@ -376,6 +532,38 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* SALE KINOWE */}
+      {activeTab === 'halls' && (
+        <div className="admin-section">
+          <div className="section-header">
+            <h2>🎭 Zarządzanie salami kinowymi</h2>
+            <button className="btn" onClick={() => openModal('hall')}>
+              + Dodaj salę
+            </button>
+          </div>
+          <div className="grid">
+            {halls.map(hall => (
+              <div key={hall.id} className="card">
+                <h3>{hall.name}</h3>
+                <p>Pojemność: {hall.capacity} miejsc</p>
+                {hall.description && <p>{hall.description}</p>}
+                <div className="card-actions">
+                  <button className="btn btn-ghost" onClick={() => openModal('hall', hall)}>
+                    Edytuj
+                  </button>
+                  <button
+                    className="btn-danger"
+                    onClick={() => deleteItem('halls', hall.id, hall.name)}
+                  >
+                    Usuń
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* BILETY */}
       {activeTab === 'tickets' && (
         <div className="admin-section">
@@ -409,13 +597,155 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* MODAL DLA FORMULARZY */}
-      {showModal && (
+      {/* RAPORTY - NOWA WERSJA */}
+      {activeTab === 'reports' && (
+        <div className="admin-section">
+          <h2>📊 Raporty</h2>
+          
+          {/* Raport sprzedaży */}
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3>💰 Raport sprzedaży</h3>
+            {reports.sales && reports.sales.summary ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: 'var(--primary)' }}>
+                      {reports.sales.summary.total_tickets || 0}
+                    </div>
+                    <div style={{ opacity: 0.8 }}>Sprzedane bilety</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: 'var(--primary)' }}>
+                      {parseFloat(reports.sales.summary.total_revenue || 0).toFixed(2)} zł
+                    </div>
+                    <div style={{ opacity: 0.8 }}>Całkowity przychód</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: 'var(--primary)' }}>
+                      {reports.sales.summary.total_customers || 0}
+                    </div>
+                    <div style={{ opacity: 0.8 }}>Unikalni klienci</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: 'var(--primary)' }}>
+                      {parseFloat(reports.sales.summary.avg_ticket_price || 0).toFixed(2)} zł
+                    </div>
+                    <div style={{ opacity: 0.8 }}>Średnia cena biletu</div>
+                  </div>
+                </div>
+                {reports.sales.daily && reports.sales.daily.length > 0 && (
+                  <div className="table-container">
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Bilety</th>
+                          <th>Przychód</th>
+                          <th>Klienci</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reports.sales.daily.slice(0, 10).map((day, idx) => (
+                          <tr key={idx}>
+                            <td>{new Date(day.date).toLocaleDateString('pl-PL')}</td>
+                            <td>{day.tickets_sold || 0}</td>
+                            <td>{parseFloat(day.total_revenue || 0).toFixed(2)} zł</td>
+                            <td>{day.unique_customers || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p style={{ opacity: 0.7 }}>Ładowanie danych sprzedaży...</p>
+            )}
+          </div>
+
+          {/* Raport obłożenia sal */}
+          <div className="card" style={{ marginBottom: '20px' }}>
+            <h3>🎭 Obłożenie sal</h3>
+            {reports.occupancy && reports.occupancy.length > 0 ? (
+              <div className="table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Sala</th>
+                      <th>Pojemność</th>
+                      <th>Seanse</th>
+                      <th>Bilety</th>
+                      <th>Przychód</th>
+                      <th>Obłożenie</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.occupancy.map((hall, idx) => (
+                      <tr key={idx}>
+                        <td>{hall.hall_name || 'Brak sali'}</td>
+                        <td>{hall.capacity || 0}</td>
+                        <td>{hall.total_sessions || 0}</td>
+                        <td>{hall.tickets_sold || 0}</td>
+                        <td>{parseFloat(hall.revenue || 0).toFixed(2)} zł</td>
+                        <td>{parseFloat(hall.occupancy_rate || 0).toFixed(1)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ opacity: 0.7 }}>Ładowanie danych obłożenia...</p>
+            )}
+          </div>
+
+          {/* Raport popularności filmów */}
+          <div className="card">
+            <h3>🎬 Popularność filmów</h3>
+            {reports.popularity && reports.popularity.length > 0 ? (
+              <div className="table-container">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Film</th>
+                      <th>Seanse</th>
+                      <th>Bilety</th>
+                      <th>Przychód</th>
+                      <th>Średnia cena</th>
+                      <th>Widzowie</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.popularity.map((movie, idx) => (
+                      <tr key={idx}>
+                        <td>{movie.title || 'Brak tytułu'}</td>
+                        <td>{movie.sessions_count || 0}</td>
+                        <td>{movie.tickets_sold || 0}</td>
+                        <td>{parseFloat(movie.revenue || 0).toFixed(2)} zł</td>
+                        <td>{parseFloat(movie.avg_price || 0).toFixed(2)} zł</td>
+                        <td>{movie.unique_viewers || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ opacity: 0.7 }}>Ładowanie danych popularności...</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DLA FORMULARZY - NIE renderuj na raportach */}
+      {showModal && activeTab !== 'reports' && modalType !== '' && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
-                {editingItem ? 'Edytuj' : 'Dodaj'} {modalType === 'movie' ? 'film' : 'seans'}
+                {editingItem ? 'Edytuj' : 'Dodaj'} {
+                  modalType === 'movie' ? 'film' : 
+                  modalType === 'session' ? 'seans' : 
+                  modalType === 'hall' ? 'salę' : ''
+                }
               </h3>
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
@@ -476,6 +806,18 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div className="form-group">
+                    <label>Sala kinowa:</label>
+                    <select
+                      value={formData.hall_id}
+                      onChange={(e) => setFormData({...formData, hall_id: e.target.value})}
+                    >
+                      <option value="">Brak sali</option>
+                      {halls.map(hall => (
+                        <option key={hall.id} value={hall.id}>{hall.name} ({hall.capacity} miejsc)</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
                     <label>Data i czas:</label>
                     <input
                       type="datetime-local"
@@ -492,6 +834,38 @@ export default function AdminDashboard() {
                       value={formData.price}
                       onChange={(e) => setFormData({...formData, price: e.target.value})}
                       required
+                    />
+                  </div>
+                </>
+              )}
+
+              {modalType === 'hall' && (
+                <>
+                  <div className="form-group">
+                    <label>Nazwa sali:</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Pojemność (liczba miejsc):</label>
+                    <input
+                      type="number"
+                      value={formData.capacity}
+                      onChange={(e) => setFormData({...formData, capacity: e.target.value})}
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Opis:</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      rows="3"
                     />
                   </div>
                 </>

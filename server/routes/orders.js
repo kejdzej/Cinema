@@ -13,7 +13,7 @@ router.post("/", authRequired, async (req, res) => {
 
     const [result] = await pool.query(
       "INSERT INTO orders (user_id, items, total, status, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [userId, JSON.stringify(items), total, "paid"]
+      [userId, JSON.stringify(items), total, "pending"]
     );
 
     res.json({ message: "Zamówienie zapisane!", order_id: result.insertId });
@@ -91,25 +91,74 @@ router.get("/:id", authRequired, async (req, res) => {
   }
 });
 
-// Dodaj endpoint do zmiany statusu zamówienia
-router.patch('/:id/status', authRequired, async (req, res) => {
+// Wszystkie zamówienia dla pracownika (bar)
+router.get("/bar/pending", authRequired, async (req, res) => {
   try {
-    const { status } = req.body;
-    const allowed = new Set(['pending', 'paid', 'failed', 'completed']);
-    if (!allowed.has(status)) {
-      return res.status(400).json({ message: 'Invalid status' });
+    // Sprawdź czy użytkownik to pracownik lub admin
+    if (req.user.role !== 'admin' && req.user.role !== 'employee') {
+      return res.status(403).json({ message: "Brak uprawnień" });
     }
-    
-    const [result] = await pool.query(
-      'UPDATE orders SET status = ? WHERE id = ? AND user_id = ? LIMIT 1',
-      [status, req.params.id, req.user.id]
+
+    const [rows] = await pool.query(
+      `SELECT o.*, u.name as user_name, u.email as user_email
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       WHERE o.status IN ('pending', 'ready')
+       ORDER BY o.created_at DESC`
     );
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Order not found' });
+
+    const result = rows.map(r => ({
+      ...r,
+      items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
+    }));
+
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Błąd serwera" });
+  }
+});
+
+// Zmień status zamówienia (dla pracownika/admina lub użytkownika)
+router.patch("/:id/status", authRequired, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Sprawdź czy użytkownik to pracownik/admin (może zmieniać statusy barowe)
+    if (req.user.role === 'admin' || req.user.role === 'employee') {
+      if (!['pending', 'ready', 'collected', 'paid', 'failed', 'completed'].includes(status)) {
+        return res.status(400).json({ message: "Nieprawidłowy status" });
+      }
+      
+      const [result] = await pool.query(
+        "UPDATE orders SET status = ? WHERE id = ?",
+        [status, id]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Zamówienie nie znalezione" });
+      }
+
+      return res.json({ message: "Status zaktualizowany", status });
+    } else {
+      // Zwykły użytkownik może zmieniać tylko swoje zamówienia
+      const allowed = new Set(['pending', 'paid', 'failed', 'completed']);
+      if (!allowed.has(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+      
+      const [result] = await pool.query(
+        'UPDATE orders SET status = ? WHERE id = ? AND user_id = ? LIMIT 1',
+        [status, id, req.user.id]
+      );
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      return res.json({ ok: true });
     }
-    
-    res.json({ ok: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'Błąd zmiany statusu' });

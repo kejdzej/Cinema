@@ -93,10 +93,8 @@ export default function PopcornBar() {
                 onSuccess={() => {
                   (async ()=>{
                     try {
-                      if (orderId){
-                        await api.patch(`/orders/${orderId}/status`, { status: 'completed' })
-                      }
-                      showToast('success', 'Płatność zakończona!')
+                      // Nie zmieniaj statusu na 'completed' - zostaw 'pending' dla pracownika
+                      showToast('success', 'Płatność zakończona! Zamówienie oczekuje na przygotowanie.')
                       setCart([])
                       setClientSecret(null)
                       setOrderId(null)

@@ -101,11 +101,15 @@ export default function Navbar() {
           <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
         )}
 
-        {user && (
-  <>
-    <Link to="/rewards">Punkty i Nagrody</Link>
-  </>
-)}
+        {user && (
+          <>
+            <Link to="/rewards">Punkty i Nagrody</Link>
+            <Link to="/recommendations">Rekomendacje</Link>
+          </>
+        )}
+        {user && (user.role === 'employee' || user.role === 'admin') && (
+          <Link to="/employee/dashboard" className="admin-link">👔 Pracownik</Link>
+        )}
 
       </div>
 
