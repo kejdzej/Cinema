@@ -37,8 +37,19 @@ export default function Home() {
   }
 
   const filteredSessions = sessions.filter(s => {
-    const sessionDate = new Date(s.datetime)
-    return sessionDate.toDateString() === selectedDate.toDateString()
+    // Sprawdź czy session i datetime istnieją
+    if (!s || !s.datetime) return false;
+    
+    try {
+      const sessionDate = new Date(s.datetime);
+      // Sprawdź czy data jest poprawna
+      if (isNaN(sessionDate.getTime())) return false;
+      
+      return sessionDate.toDateString() === selectedDate.toDateString();
+    } catch (error) {
+      console.error('Error filtering session:', error, s);
+      return false;
+    }
   })
 
   const filteredMovies = search
@@ -65,11 +76,20 @@ export default function Home() {
           ))}
         </div>
 
-        {filteredMovies.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-            <h3>Brak seansów na wybrany dzień</h3>
-            <p style={{ opacity: 0.8, marginTop: '10px' }}>
-              Wybierz inny dzień lub sprawdź repertuar później.
+        {filteredSessions.length === 0 ? (
+          <div className="card" style={{ 
+            textAlign: 'center', 
+            padding: '40px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '2px dashed rgba(255, 255, 255, 0.2)'
+          }}>
+            <div style={{ fontSize: '4em', marginBottom: '20px' }}>📅</div>
+            <h3 style={{ color: 'var(--primary)', marginBottom: '15px' }}>Brak seansów na wybrany dzień</h3>
+            <p style={{ opacity: 0.8, marginTop: '10px', fontSize: '1.1em' }}>
+              Wybierz inny dzień z paska powyżej lub sprawdź repertuar później.
+            </p>
+            <p style={{ opacity: 0.6, marginTop: '10px', fontSize: '0.9em' }}>
+              Możesz również sprawdzić seanse na inne dni tygodnia.
             </p>
           </div>
         ) : (

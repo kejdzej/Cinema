@@ -18,6 +18,7 @@ import ChatBot from "./components/ChatBot.jsx";
 import LoyaltyPoints from './pages/LoyaltyPoints.jsx';
 import RedeemRewards from './pages/RedeemRewards.jsx'; // Добавляем компонент для обмена наградами
 import Recommendations from './pages/Recommendations.jsx';
+import History from './pages/History.jsx';
 
 const ToastContext = createContext(null)
 export function useToast(){ return useContext(ToastContext) }
@@ -100,7 +101,8 @@ export default function App(){
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
+          <Route path="/history" element={<ProtectedRoute><History/></ProtectedRoute>} />
           <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard/></ProtectedRoute>} />
           <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard/></ProtectedRoute>} />
           <Route path="/reservation/:id" element={<Reservation />} />

@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     datetime: '',
     price: '',
     hall_id: '',
+    format: '2D',
     name: '',
     capacity: ''
   });
@@ -55,7 +56,7 @@ export default function AdminDashboard() {
     }
   }, [user]);
 
-  // Załaduj dane dla aktywnej zakładki
+  // Załaduj dane dla aktywnej zakładki (z obsługą race condition)
   useEffect(() => {
     // Zamykaj modal przy zmianie zakładki (NAJPIERW!)
     setShowModal(false);
@@ -63,16 +64,26 @@ export default function AdminDashboard() {
     setModalType('');
     
     if (user && user.role === 'admin') {
-      loadData(activeTab);
+      // AbortController do anulowania poprzednich requestów
+      const abortController = new AbortController();
+      
+      loadData(activeTab, abortController.signal);
+      
+      // Cleanup - anuluj requesty przy zmianie zakładki
+      return () => {
+        abortController.abort();
+      };
     }
   }, [activeTab, user]);
 
-  const loadData = async (tab) => {
+  const loadData = async (tab, signal = null) => {
     // Nie pokazuj loading dla raportów (żeby nie było ciemno)
     if (tab !== 'reports') {
       setLoading(true);
     }
     try {
+      // Sprawdź czy request został anulowany
+      if (signal?.aborted) return;
       switch (tab) {
         case 'movies':
           const moviesRes = await api.get('/admin/movies');
@@ -100,24 +111,29 @@ export default function AdminDashboard() {
           break;
         case 'reports':
           // Dla raportów ładuj dane bez loading state
+          if (signal?.aborted) return;
           try {
             const [salesRes, occupancyRes, popularityRes] = await Promise.all([
               api.get('/reports/sales').catch(() => ({ data: null })),
               api.get('/reports/occupancy').catch(() => ({ data: [] })),
               api.get('/reports/popularity').catch(() => ({ data: [] }))
             ]);
-            setReports({
-              sales: salesRes.data,
-              occupancy: occupancyRes.data || [],
-              popularity: popularityRes.data || []
-            });
+            if (!signal?.aborted) {
+              setReports({
+                sales: salesRes.data,
+                occupancy: occupancyRes.data || [],
+                popularity: popularityRes.data || []
+              });
+            }
           } catch (err) {
             console.error('Reports error:', err);
-            setReports({
-              sales: null,
-              occupancy: [],
-              popularity: []
-            });
+            if (!signal?.aborted) {
+              setReports({
+                sales: null,
+                occupancy: [],
+                popularity: []
+              });
+            }
           }
           return; // Wyjdź wcześniej, żeby nie ustawić loading
       }
@@ -173,10 +189,19 @@ export default function AdminDashboard() {
           description: '',
           duration: '',
           poster: '',
-          movie_id: item.movie_id || '',
-          datetime: item.datetime ? new Date(item.datetime).toISOString().slice(0, 16) : '',
-          price: item.price || '',
-          hall_id: item.hall_id || ''
+        movie_id: item.movie_id || '',
+        datetime: item.datetime ? (() => {
+          try {
+            const date = new Date(item.datetime);
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().slice(0, 16);
+          } catch {
+            return '';
+          }
+        })() : '',
+        price: item.price ? String(item.price).replace(',', '.') : '',
+        hall_id: item.hall_id || '',
+        format: item.format || '2D'
         });
       } else if (type === 'hall') {
         setFormData({
@@ -214,7 +239,7 @@ export default function AdminDashboard() {
     setShowModal(false);
     setEditingItem(null);
     setModalType('');
-    // Reset form data
+      // Reset form data
     setFormData({
       title: '',
       description: '',
@@ -224,6 +249,7 @@ export default function AdminDashboard() {
       datetime: '',
       price: '',
       hall_id: '',
+      format: '2D',
       name: '',
       capacity: ''
     });
@@ -257,22 +283,143 @@ export default function AdminDashboard() {
       } else if (modalType === 'session') {
         if (editingItem) {
           // Edycja seansu
-          await api.put(`/admin/sessions/${editingItem.id}`, {
-            movie_id: parseInt(formData.movie_id),
-            datetime: formData.datetime,
-            price: parseFloat(formData.price),
-            hall_id: formData.hall_id ? parseInt(formData.hall_id) : null
+          // Walidacja hall_id - sprawdź czy to poprawna liczba
+          const hallId = formData.hall_id && formData.hall_id.trim() !== '' 
+            ? parseInt(formData.hall_id) 
+            : null;
+          
+          if (hallId !== null && isNaN(hallId)) {
+            showToast('error', 'Nieprawidłowy ID sali');
+            return;
+          }
+          
+          // Walidacja daty
+          if (!formData.datetime || formData.datetime.trim() === '') {
+            showToast('error', 'Data i godzina są wymagane');
+            return;
+          }
+          
+          // Konwersja daty z formatu datetime-local (YYYY-MM-DDTHH:mm) na MySQL (YYYY-MM-DD HH:mm:ss)
+          let datetimeValue = formData.datetime.replace('T', ' ') + ':00';
+          
+          // Walidacja formatu przed wysłaniem
+          const formatValue = (formData.format === '2D' || formData.format === '3D') 
+            ? formData.format 
+            : '2D';
+          
+          // Walidacja ceny - bardziej szczegółowa
+          if (!formData.price || formData.price.toString().trim() === '') {
+            showToast('error', 'Cena jest wymagana');
+            return;
+          }
+          
+          const priceStr = String(formData.price).trim().replace(/[^\d.,]/g, '').replace(',', '.');
+          const priceValue = parseFloat(priceStr);
+          
+          console.log('[FRONTEND] Price validation:', { 
+            original: formData.price, 
+            cleaned: priceStr, 
+            parsed: priceValue,
+            isValid: !isNaN(priceValue) && priceValue > 0
           });
-          showToast('success', 'Seans zaktualizowany');
+          
+          if (isNaN(priceValue) || priceValue <= 0) {
+            showToast('error', `Nieprawidłowa cena: "${formData.price}". Wprowadź poprawną liczbę większą od 0.`);
+            return;
+          }
+          
+          try {
+            console.log('[FRONTEND] Sending update request:', {
+              movie_id: parseInt(formData.movie_id),
+              datetime: datetimeValue,
+              price: priceValue,
+              hall_id: hallId,
+              format: formatValue
+            });
+            
+            await api.put(`/admin/sessions/${editingItem.id}`, {
+              movie_id: parseInt(formData.movie_id),
+              datetime: datetimeValue,
+              price: priceValue,
+              hall_id: hallId,
+              format: formatValue
+            });
+            
+            showToast('success', 'Seans zaktualizowany');
+            loadData('sessions');
+            closeModal();
+          } catch (error) {
+            console.error('[FRONTEND] Update error:', error);
+            console.error('[FRONTEND] Error response:', error?.response?.data);
+            const errorMsg = error?.response?.data?.error || error?.response?.data?.message || 'Błąd aktualizacji seansu';
+            if (errorMsg.includes('format') || errorMsg.includes('ER_BAD_FIELD_ERROR')) {
+              showToast('error', 'Błąd: Kolumna format nie istnieje w bazie. Wykonaj migrację SQL: mysql -u root -p cinema < server/sql/add_format_to_sessions.sql');
+            } else {
+              showToast('error', `Błąd: ${errorMsg}`);
+            }
+            return;
+          }
         } else {
+          // Walidacja hall_id - sprawdź czy to poprawna liczba
+          const hallId = formData.hall_id && formData.hall_id.trim() !== '' 
+            ? parseInt(formData.hall_id) 
+            : null;
+          
+          if (hallId !== null && isNaN(hallId)) {
+            showToast('error', 'Nieprawidłowy ID sali');
+            return;
+          }
+          
           // Dodanie seansu
-          await api.post('/admin/sessions', {
-            movie_id: parseInt(formData.movie_id),
-            datetime: formData.datetime,
-            price: parseFloat(formData.price),
-            hall_id: formData.hall_id ? parseInt(formData.hall_id) : null
-          });
-          showToast('success', 'Seans dodany');
+          // Walidacja daty
+          if (!formData.datetime || formData.datetime.trim() === '') {
+            showToast('error', 'Data i godzina są wymagane');
+            return;
+          }
+          
+          // Konwersja daty z formatu datetime-local (YYYY-MM-DDTHH:mm) na MySQL (YYYY-MM-DD HH:mm:ss)
+          let datetimeValue = formData.datetime.replace('T', ' ') + ':00';
+          
+          // Walidacja formatu przed wysłaniem
+          const formatValue = (formData.format === '2D' || formData.format === '3D') 
+            ? formData.format 
+            : '2D';
+          
+          // Walidacja ceny - bardziej szczegółowa
+          if (!formData.price || formData.price.toString().trim() === '') {
+            showToast('error', 'Cena jest wymagana');
+            return;
+          }
+          
+          const priceStr = String(formData.price).trim().replace(/[^\d.,]/g, '').replace(',', '.');
+          const priceValue = parseFloat(priceStr);
+          
+          if (isNaN(priceValue) || priceValue <= 0) {
+            showToast('error', `Nieprawidłowa cena: "${formData.price}". Wprowadź poprawną liczbę większą od 0.`);
+            return;
+          }
+          
+          try {
+            await api.post('/admin/sessions', {
+              movie_id: parseInt(formData.movie_id),
+              datetime: datetimeValue,
+              price: priceValue,
+              hall_id: hallId,
+              format: formatValue
+            });
+            showToast('success', 'Seans dodany');
+            loadData('sessions');
+            closeModal();
+          } catch (error) {
+            console.error('[FRONTEND] Add error:', error);
+            const errorMsg = error?.response?.data?.error || error?.response?.data?.message || 'Błąd dodawania seansu';
+            if (errorMsg.includes('format') || errorMsg.includes('ER_BAD_FIELD_ERROR')) {
+              showToast('error', 'Błąd: Kolumna format nie istnieje w bazie. Wykonaj migrację SQL: mysql -u root -p cinema < server/sql/add_format_to_sessions.sql');
+            } else {
+              showToast('error', `Błąd: ${errorMsg}`);
+            }
+            return;
+          }
         }
         loadData('sessions');
       } else if (modalType === 'hall') {
@@ -835,6 +982,17 @@ export default function AdminDashboard() {
                       onChange={(e) => setFormData({...formData, price: e.target.value})}
                       required
                     />
+                  </div>
+                  <div className="form-group">
+                    <label>Format:</label>
+                    <select
+                      value={formData.format}
+                      onChange={(e) => setFormData({...formData, format: e.target.value})}
+                      required
+                    >
+                      <option value="2D">2D</option>
+                      <option value="3D">3D</option>
+                    </select>
                   </div>
                 </>
               )}

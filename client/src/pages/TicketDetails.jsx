@@ -30,6 +30,20 @@ export default function TicketDetails() {
         {/* Левая часть — описание */}
         <div style={{ flex: "1 1 300px" }}>
           <h2>{ticket.title}</h2>
+          {ticket.format === '3D' && (
+            <p style={{ marginTop: '10px' }}>
+              <span style={{
+                padding: '4px 12px',
+                background: 'var(--primary)',
+                color: '#000',
+                borderRadius: '6px',
+                fontSize: '0.9em',
+                fontWeight: 'bold'
+              }}>
+                3D
+              </span>
+            </p>
+          )}
           <p><b>Data seansu:</b> {new Date(ticket.datetime).toLocaleString("pl-PL")}</p>
           <p><b>Data zakupu:</b> {new Date(ticket.created_at).toLocaleString("pl-PL")}</p>
           <p><b>Miejsca:</b> {ticket.seats}</p>

@@ -24,6 +24,25 @@ export default function SessionButton({ session }) {
   return (
     <button className="session-btn" onClick={handleClick} title={session.hall_name ? `Sala: ${session.hall_name}` : ''}>
       {timeStr}
+      {session.format === '3D' && (
+        <span style={{ 
+          marginLeft: '6px', 
+          fontSize: '0.75em', 
+          color: 'var(--primary)',
+          fontWeight: 'bold',
+          padding: '2px 6px',
+          background: 'rgba(250, 204, 21, 0.2)',
+          borderRadius: '4px'
+        }}>3D</span>
+      )}
+      {session.format === '2D' && (
+        <span style={{ 
+          marginLeft: '6px', 
+          fontSize: '0.75em', 
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontWeight: 'normal'
+        }}>2D</span>
+      )}
       {session.hall_name && <span className="hall-badge">{session.hall_name}</span>}
     </button>
   )

@@ -38,6 +38,13 @@ export default function PopcornBar() {
       showToast("error", "Musisz się zalogować aby kupić")
       return
     }
+    
+    // Walidacja - sprawdź czy koszyk nie jest pusty
+    if (cart.length === 0) {
+      showToast("error", "Koszyk jest pusty")
+      return
+    }
+    
     try {
       const total = cart.reduce((sum, p) => sum + p.price * p.qty, 0)
       const orderRes = await api.post("/orders", { items: cart, total })

@@ -76,36 +76,38 @@ export default function Navbar() {
       <div className="navbar-left">
         <Link to="/" className="brand">🎬 Cinema</Link>
         
-        {/* Linki do sekcji tylko na stronie głównej */}
-        {isHomePage && (
-          <>
-            <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
-            <span onClick={() => scrollToSection('popcorn')} style={{cursor: 'pointer'}}>Popcorn Bar</span>
-            <span onClick={() => scrollToSection('cennik')} style={{cursor: 'pointer'}}>Cennik</span>
-            <span onClick={() => scrollToSection('aktualnosci')} style={{cursor: 'pointer'}}>Aktualności</span>
-          </>
-        )}
-        
-        {/* Na innych stronach (oprócz admin) pokaż link do strony głównej */}
-        {!isHomePage && !isAdminPanel && (
-          <Link to="/">Strona główna</Link>
-        )}
-        
-        {/* W panelu admin przycisk powrotu */}
-        {isAdminPanel && (
-          <span style={{cursor: 'pointer'}} onClick={() => window.history.back()}>← Powrót</span>
-        )}
-        
-        {user && !isAdminPanel && !isDashboard && <Link to="/dashboard">Moje zamówienia</Link>}
-        {user && user.role === 'admin' && !isAdminPanel && (
-          <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
-        )}
-
+        {/* Linki do sekcji tylko na stronie głównej */}
+        {isHomePage && (
+          <>
+            <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
+            <span onClick={() => scrollToSection('popcorn')} style={{cursor: 'pointer'}}>Popcorn Bar</span>
+            <span onClick={() => scrollToSection('cennik')} style={{cursor: 'pointer'}}>Cennik</span>
+            <span onClick={() => scrollToSection('aktualnosci')} style={{cursor: 'pointer'}}>Aktualności</span>
+          </>
+        )}
+        
+        {/* Na innych stronach (oprócz admin) pokaż link do strony głównej */}
+        {!isHomePage && !isAdminPanel && (
+          <Link to="/">Strona główna</Link>
+        )}
+        
+        {/* W panelu admin przycisk powrotu */}
+        {isAdminPanel && (
+          <span style={{cursor: 'pointer'}} onClick={() => window.history.back()}>← Powrót</span>
+        )}
+        
+        {/* Linki dla zalogowanych użytkowników - poprawiona kolejność */}
         {user && (
           <>
+            {!isAdminPanel && !isDashboard && <Link to="/dashboard">Moje zamówienia</Link>}
             <Link to="/rewards">Punkty i Nagrody</Link>
             <Link to="/recommendations">Rekomendacje</Link>
           </>
+        )}
+        
+        {/* Linki dla admina i pracownika */}
+        {user && user.role === 'admin' && !isAdminPanel && (
+          <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
         )}
         {user && (user.role === 'employee' || user.role === 'admin') && (
           <Link to="/employee/dashboard" className="admin-link">👔 Pracownik</Link>

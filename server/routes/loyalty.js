@@ -66,7 +66,7 @@ router.post("/add", authRequired, async (req, res) => {
 
     // Записываем историю
     await pool.query(
-      "INSERT INTO loyalty_history (user_id, points, type, description) VALUES (?, ?, 'add', ?)",
+      "INSERT INTO loyalty_history (user_id, change_amount, description) VALUES (?, ?, ?)",
       [req.user.id, amount, description || 'Bonus points']
     );
 

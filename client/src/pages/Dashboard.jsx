@@ -17,22 +17,44 @@ export default function Dashboard() {
       .then(res => setMyTickets(res.data))
       .catch(() => showToast("error", "Błąd ładowania biletów"));
 
-    // 🍿 Загружаем продукты
-    api.get("/orders")
-      .then(res => {
-        // если items в БД строка → парсим
-        const fixed = res.data.map(o => ({
-          ...o,
-          items: typeof o.items === "string" ? JSON.parse(o.items) : o.items
-        }));
-        setMyOrders(fixed);
-      })
-      .catch(() => showToast("error", "Błąd ładowania zamówień"));
-  }, [showToast]); // Добавляем showToast в зависимости
+    // 🍿 Загружаем продукты (tylko te które nie są collected)
+    api.get("/orders")
+      .then(res => {
+        // если items в БД строка → парсим (z obsługą błędów)
+        const fixed = res.data.map(o => {
+          try {
+            return {
+              ...o,
+              items: typeof o.items === "string" ? JSON.parse(o.items) : o.items
+            };
+          } catch (error) {
+            console.error('Error parsing order items:', error, o);
+            // Jeśli błąd parsowania, użyj pustej tablicy
+            return {
+              ...o,
+              items: []
+            };
+          }
+        });
+        // Filtruj tylko zamówienia które nie są collected
+        const notCollected = fixed.filter(o => o.status !== 'collected');
+        setMyOrders(notCollected);
+      })
+      .catch(() => showToast("error", "Błąd ładowania zamówień"));
+  }, []); // Usunięto showToast z dependencies (funkcja z kontekstu)
 
   return (
     <div className="container">
-      <h1>🧾 Moje zamówienia</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ margin: 0 }}>🧾 Moje zamówienia</h1>
+        <button 
+          className="btn" 
+          onClick={() => navigate('/history')}
+          style={{ fontSize: '0.9em' }}
+        >
+          📜 Historia zamówień i biletów
+        </button>
+      </div>
       
       <StatsCard />
 

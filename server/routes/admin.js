@@ -84,35 +84,136 @@ router.get('/sessions', authRequired, adminRequired, async (req, res) => {
 // Dodaj seans
 router.post('/sessions', authRequired, adminRequired, async (req, res) => {
   try {
-    const { movie_id, datetime, price, hall_id } = req.body;
-    if (!movie_id || !datetime || !price) {
-      return res.status(400).json({ message: 'Wszystkie pola są wymagane' });
+    const { movie_id, datetime, price, hall_id, format } = req.body;
+    
+    console.log('[ADD SESSION] Request body:', { movie_id, datetime, price, hall_id, format, priceType: typeof price });
+    
+    if (!movie_id || !datetime) {
+      return res.status(400).json({ message: 'Film i data są wymagane' });
+    }
+    
+    // Walidacja ceny - bardziej elastyczna
+    let priceValue;
+    if (price === null || price === undefined || price === '') {
+      return res.status(400).json({ message: 'Cena jest wymagana' });
+    }
+    
+    if (typeof price === 'string') {
+      // Usuń wszystkie znaki oprócz cyfr, kropki i przecinka
+      const cleanedPrice = price.replace(/[^\d.,]/g, '').replace(',', '.');
+      priceValue = parseFloat(cleanedPrice);
+    } else if (typeof price === 'number') {
+      priceValue = price;
+    } else {
+      return res.status(400).json({ message: 'Nieprawidłowy format ceny' });
+    }
+    
+    console.log('[ADD SESSION] Parsed price:', priceValue);
+    
+    if (isNaN(priceValue) || priceValue <= 0) {
+      return res.status(400).json({ message: `Nieprawidłowa cena: ${price}. Wprowadź poprawną liczbę większą od 0.` });
     }
 
-    const [result] = await pool.query(
-      'INSERT INTO sessions (movie_id, datetime, price, hall_id) VALUES (?, ?, ?, ?)',
-      [movie_id, datetime, price, hall_id || null]
-    );
-    res.json({ message: 'Seans dodany', id: result.insertId });
+    // Walidacja formatu
+    const validFormat = (format === '2D' || format === '3D') ? format : '2D';
+    
+    // Sprawdź czy kolumna format istnieje
+    try {
+      console.log('[ADD SESSION] Executing query with format');
+      const [result] = await pool.query(
+        'INSERT INTO sessions (movie_id, datetime, price, hall_id, format) VALUES (?, ?, ?, ?, ?)',
+        [parseInt(movie_id), datetime, priceValue, hall_id || null, validFormat]
+      );
+      console.log('[ADD SESSION] Success, ID:', result.insertId);
+      res.json({ message: 'Seans dodany', id: result.insertId });
+    } catch (formatError) {
+      console.error('[ADD SESSION] Format error:', formatError.code, formatError.message);
+      // Jeśli błąd związany z kolumną format, spróbuj bez niej
+      if (formatError.code === 'ER_BAD_FIELD_ERROR' && formatError.sqlMessage?.includes('format')) {
+        console.warn('Kolumna format nie istnieje, dodawanie bez formatu');
+        const [result] = await pool.query(
+          'INSERT INTO sessions (movie_id, datetime, price, hall_id) VALUES (?, ?, ?, ?)',
+          [parseInt(movie_id), datetime, priceValue, hall_id || null]
+        );
+        res.json({ message: 'Seans dodany (bez formatu - wykonaj migrację SQL)', id: result.insertId });
+      } else {
+        throw formatError;
+      }
+    }
   } catch (e) {
-    console.error('Add session error:', e);
-    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+    console.error('[ADD SESSION] Full error:', e);
+    console.error('[ADD SESSION] Error stack:', e.stack);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message, code: e.code });
   }
 });
 
 // Edytuj seans
 router.put('/sessions/:id', authRequired, adminRequired, async (req, res) => {
   try {
-    const { movie_id, datetime, price, hall_id } = req.body;
-    const [result] = await pool.query(
-      'UPDATE sessions SET movie_id = ?, datetime = ?, price = ?, hall_id = ? WHERE id = ?',
-      [movie_id, datetime, price, hall_id || null, req.params.id]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ message: 'Seans nie znaleziony' });
-    res.json({ message: 'Seans zaktualizowany' });
+    const { movie_id, datetime, price, hall_id, format } = req.body;
+    
+    console.log('[UPDATE SESSION] Request body:', { movie_id, datetime, price, hall_id, format, priceType: typeof price });
+    
+    // Walidacja podstawowych pól
+    if (!movie_id || !datetime) {
+      return res.status(400).json({ message: 'Film i data są wymagane' });
+    }
+    
+    // Walidacja ceny - bardziej elastyczna
+    let priceValue;
+    if (price === null || price === undefined || price === '') {
+      return res.status(400).json({ message: 'Cena jest wymagana' });
+    }
+    
+    if (typeof price === 'string') {
+      // Usuń wszystkie znaki oprócz cyfr, kropki i przecinka
+      const cleanedPrice = price.replace(/[^\d.,]/g, '').replace(',', '.');
+      priceValue = parseFloat(cleanedPrice);
+    } else if (typeof price === 'number') {
+      priceValue = price;
+    } else {
+      return res.status(400).json({ message: 'Nieprawidłowy format ceny' });
+    }
+    
+    console.log('[UPDATE SESSION] Parsed price:', priceValue);
+    
+    if (isNaN(priceValue) || priceValue <= 0) {
+      return res.status(400).json({ message: `Nieprawidłowa cena: ${price}. Wprowadź poprawną liczbę większą od 0.` });
+    }
+    
+    // Walidacja formatu
+    const validFormat = (format === '2D' || format === '3D') ? format : '2D';
+    
+    // Sprawdź czy kolumna format istnieje, jeśli nie - użyj UPDATE bez format
+    let query, params;
+    try {
+      // Spróbuj z format
+      query = 'UPDATE sessions SET movie_id = ?, datetime = ?, price = ?, hall_id = ?, format = ? WHERE id = ?';
+      params = [parseInt(movie_id), datetime, priceValue, hall_id || null, validFormat, parseInt(req.params.id)];
+      console.log('[UPDATE SESSION] Executing query with format:', query, params);
+      const [result] = await pool.query(query, params);
+      if (result.affectedRows === 0) return res.status(404).json({ message: 'Seans nie znaleziony' });
+      console.log('[UPDATE SESSION] Success');
+      res.json({ message: 'Seans zaktualizowany' });
+    } catch (formatError) {
+      console.error('[UPDATE SESSION] Format error:', formatError.code, formatError.message);
+      // Jeśli błąd związany z kolumną format, spróbuj bez niej
+      if (formatError.code === 'ER_BAD_FIELD_ERROR' && formatError.sqlMessage?.includes('format')) {
+        console.warn('Kolumna format nie istnieje, aktualizacja bez formatu');
+        query = 'UPDATE sessions SET movie_id = ?, datetime = ?, price = ?, hall_id = ? WHERE id = ?';
+        params = [parseInt(movie_id), datetime, priceValue, hall_id || null, parseInt(req.params.id)];
+        console.log('[UPDATE SESSION] Executing query without format:', query, params);
+        const [result] = await pool.query(query, params);
+        if (result.affectedRows === 0) return res.status(404).json({ message: 'Seans nie znaleziony' });
+        res.json({ message: 'Seans zaktualizowany (bez formatu - wykonaj migrację SQL)' });
+      } else {
+        throw formatError;
+      }
+    }
   } catch (e) {
-    console.error('Update session error:', e);
-    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+    console.error('[UPDATE SESSION] Full error:', e);
+    console.error('[UPDATE SESSION] Error stack:', e.stack);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message, code: e.code });
   }
 });
 

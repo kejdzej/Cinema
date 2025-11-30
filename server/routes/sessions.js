@@ -7,7 +7,7 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT s.id, s.movie_id, s.datetime, s.price, s.hall_id, m.title, h.name as hall_name, h.capacity as hall_capacity
+      SELECT s.id, s.movie_id, s.datetime, s.price, s.hall_id, s.format, m.title, h.name as hall_name, h.capacity as hall_capacity, h.description as hall_type
       FROM sessions s
       JOIN movies m ON m.id = s.movie_id
       LEFT JOIN cinema_halls h ON s.hall_id = h.id
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT s.id, s.movie_id, s.datetime, s.price, s.hall_id, m.title, h.name as hall_name, h.capacity as hall_capacity
+      SELECT s.id, s.movie_id, s.datetime, s.price, s.hall_id, s.format, m.title, h.name as hall_name, h.capacity as hall_capacity, h.description as hall_type
       FROM sessions s
       JOIN movies m ON m.id = s.movie_id
       LEFT JOIN cinema_halls h ON s.hall_id = h.id

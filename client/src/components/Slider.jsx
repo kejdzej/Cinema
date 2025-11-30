@@ -46,12 +46,11 @@ export default function SliderHero() {
       id: 'loyalty-promo',
       title: "Program lojalnościowy",
       desc: "Zbieraj punkty i wymieniaj je na nagrody!",
-      img: "/posters/zestaw.jpg", // Użyj zestaw.jpg jako okładka (zestaw produktów = nagrody)
-      // Alternatywy: "/posters/popcorn.jpg" lub gradient (patrz poniżej)
+      img: "/posters/zestaw.jpg",
       button: "Dowiedz się więcej",
       type: 'promotion',
-      link: '/loyalty',
-      useGradient: false // Ustaw na true jeśli chcesz użyć gradientu zamiast obrazu
+      link: '/rewards',
+      useGradient: false
     }
   ];
 
@@ -121,16 +120,22 @@ export default function SliderHero() {
         {allSlides.map((s, i) => (
           <div key={s.id || i} className="slide">
             {s.useGradient ? (
-              // Gradient dla programu lojalnościowego
+              // Gradient dla promocji
               <div 
                 className="slide-img"
                 style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                  background: s.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover'
+                  objectFit: 'cover',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '4em'
                 }}
-              />
+              >
+                {s.id === 'vip-promo' && '⭐'}
+              </div>
             ) : (
               <img 
                 src={s.img} 

@@ -22,7 +22,26 @@ export default function Reservation() {
     ])
       .then(([sRes, tRes]) => {
         setSession(sRes.data)
-        setBookedSeats(tRes.data.map(t => t.seats).join(",").split(",")) // seats  "A1,A2"
+        // Bezpieczne parsowanie miejsc - obsługa stringów i tablic
+        try {
+          const allSeats = [];
+          tRes.data.forEach(ticket => {
+            if (ticket.seats) {
+              if (typeof ticket.seats === 'string') {
+                // Jeśli string, podziel po przecinku
+                const seats = ticket.seats.split(',').map(s => s.trim()).filter(s => s);
+                allSeats.push(...seats);
+              } else if (Array.isArray(ticket.seats)) {
+                // Jeśli już tablica, dodaj bezpośrednio
+                allSeats.push(...ticket.seats);
+              }
+            }
+          });
+          setBookedSeats(allSeats);
+        } catch (error) {
+          console.error('Error parsing seats:', error);
+          setBookedSeats([]);
+        }
       })
       .catch(() => showToast("error", "Ошибка загрузки сеанса"))
       .finally(() => setLoading(false))
@@ -38,6 +57,17 @@ export default function Reservation() {
   }
 
  const purchase = async () => {
+  // Sprawdź czy seans nie minął
+  if (session && new Date(session.datetime) < new Date()) {
+    showToast("error", "Nie można kupić biletu na seans który już się odbył");
+    return;
+  }
+  
+  if (selectedSeats.length === 0) {
+    showToast("error", "Wybierz przynajmniej jedno miejsce");
+    return;
+  }
+  
   try {
     const response = await api.post("/tickets/purchase", {
       session_id: session.id,
@@ -65,13 +95,152 @@ export default function Reservation() {
   if (loading) return <div className="container">Ładowanie...</div>
   if (!session) return <div className="container">Brak seansu</div>
 
-  // зал — 5 рядов × 8 мест
-  const rows = 5
-  const cols = 8
-  const seats = []
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      seats.push(String.fromCharCode(65 + r) + (c + 1)) // A1, A2...
+  // Generowanie miejsc - sztywne układy dla konkretnych sal
+  const capacity = session.hall_capacity || 40;
+  const hallType = session.hall_type || 'standard';
+  const hallName = session.hall_name || '';
+  
+  const seats = [];
+  const seatsByRow = {};
+  
+  // Sala 1: 72 miejsca - 9 rzędów po 8 miejsc
+  // Sala 2: 50 miejsc - 5 rzędów po 10 foteli
+  // Sala 3: 144 miejsca fizyczne - 8 rzędów foteli po 8 + 4 rzędy kanap po 10
+  // Sala 4: 56 miejsc fizycznych VIP - 4 rzędy foteli VIP po 10 + 1 rząd kanap VIP (8 kanap)
+  
+  if (hallName.includes('Sala 1') || (capacity === 72 && hallType === 'standard')) {
+    // Sala 1: 9 rzędów po 8 miejsc
+    const rows = 9;
+    const seatsPerRow = 8;
+    for (let r = 0; r < rows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+  } else if (hallName.includes('Sala 2') || (capacity === 50 && hallType === 'standard')) {
+    // Sala 2: 5 rzędów po 10 - ostatnie 2 rzędy (D-E) to kanapy
+    const normalRows = 3; // Rzędy A-C to fotele
+    const couchRows = 2; // Rzędy D-E to kanapy
+    const seatsPerRow = 10;
+    
+    // Zwykłe rzędy (A-C)
+    for (let r = 0; r < normalRows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    
+    // Rzędy kanap (D-E)
+    for (let r = 0; r < couchRows; r++) {
+      const rowLetter = String.fromCharCode(65 + normalRows + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+  } else if (hallName.includes('Sala 3') || (hallType === 'mixed')) {
+    // Sala 3: 8 rzędów foteli po 8 + 2 rzędy kanap po 10
+    // Rzędy foteli (A-H): 8 rzędów po 8 foteli = 64 miejsca
+    const normalRows = 8;
+    const normalSeatsPerRow = 8;
+    for (let r = 0; r < normalRows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= normalSeatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    // Rzędy kanap (I-J): 2 rzędy po 8 kanap = 16 miejsc w bazie (32 fizycznie)
+    const couchRows = 2;
+    const couchSeatsPerRow = 8; // 8 kanap na rząd
+    for (let r = 0; r < couchRows; r++) {
+      const rowLetter = String.fromCharCode(65 + normalRows + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= couchSeatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    // Razem: 64 + 32 = 96 miejsc fizyczne
+  } else if (hallName.includes('Sala 4') || (hallType === 'vip')) {
+    // Sala 4 VIP: 5 rzędów foteli VIP (A-E) po 8 + 2 rzędy kanap VIP (F-G) po 8
+    // Rzędy foteli VIP (A-E): 5 rzędów po 8 = 40 miejsc
+    const vipRows = 5;
+    const vipSeatsPerRow = 8;
+    for (let r = 0; r < vipRows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= vipSeatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    // Rzędy kanap VIP (F-G): 2 rzędy po 8 kanap = 16 miejsc w bazie (32 fizycznie)
+    const vipCouchRows = 2;
+    const vipCouchSeatsPerRow = 8;
+    for (let r = 0; r < vipCouchRows; r++) {
+      const rowLetter = String.fromCharCode(65 + vipRows + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= vipCouchSeatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    // Razem: 40 + 32 = 72 miejsca fizyczne
+  } else if (hallName.includes('Sala 1') || (capacity === 72 && hallType === 'standard')) {
+    // Sala 1: 72 miejsca - 9 rzędów po 8 miejsc
+    const rows = 9;
+    const seatsPerRow = 8;
+    for (let r = 0; r < rows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+  } else {
+    // Domyślny układ: 5 rzędów zwykłych + 2 rzędy kanap (40 miejsc)
+    const rows = 5;
+    const couchRows = 2;
+    const seatsPerRow = 8;
+    
+    // Zwykłe rzędy (A-E)
+    for (let r = 0; r < rows; r++) {
+      const rowLetter = String.fromCharCode(65 + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
+    }
+    
+    // Rzędy kanap (F-G)
+    for (let r = 0; r < couchRows; r++) {
+      const rowLetter = String.fromCharCode(65 + rows + r);
+      seatsByRow[rowLetter] = [];
+      for (let c = 1; c <= seatsPerRow; c++) {
+        const seat = rowLetter + c;
+        seats.push(seat);
+        seatsByRow[rowLetter].push(seat);
+      }
     }
   }
 
@@ -79,7 +248,21 @@ export default function Reservation() {
   <div className="container reservation">
     <div className="reservation-left">
       <h1>{session.title}</h1>
-      <p>{new Date(session.datetime).toLocaleString("pl-PL")}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+        <p style={{ margin: 0 }}>{new Date(session.datetime).toLocaleString("pl-PL")}</p>
+        {session.format === '3D' && (
+          <span style={{
+            padding: '4px 12px',
+            background: 'var(--primary)',
+            color: '#000',
+            borderRadius: '6px',
+            fontSize: '0.9em',
+            fontWeight: 'bold'
+          }}>
+            3D
+          </span>
+        )}
+      </div>
       {session.hall_name && (
         <p style={{marginTop: '8px', opacity: 0.8}}>
           🎭 Sala: <strong>{session.hall_name}</strong>
@@ -87,55 +270,318 @@ export default function Reservation() {
         </p>
       )}
 
-      <div className="screen">ekran</div>
+      {/* Ekran na górze */}
+      <div className="screen">🎬 EKRAN</div>
 
-      <div className="seats-grid">
-        {seats.map(seat => {
-          const isBooked = bookedSeats.includes(seat)
-          const isSelected = selectedSeats.includes(seat)
+      {/* Układ miejsc - wszystkie w jednym rzędzie */}
+      <div className="seats-layout">
+        {Object.entries(seatsByRow).map(([rowLetter, rowSeats]) => {
+                  // Określ czy to kanapa na podstawie typu sali i rzędu
+                  let isCouch = false;
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: rzędy F-G to kanapy VIP
+                    isCouch = ['F', 'G'].includes(rowLetter);
+                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+                    // Sala 3: rzędy I-J to kanapy (po 8 rzędach foteli A-H)
+                    isCouch = ['I', 'J'].includes(rowLetter);
+                  } else {
+                    // Standardowy układ: ostatnie 2 rzędy to kanapy (dla sali 1, 2 i innych)
+                    const rowNumber = rowLetter.charCodeAt(0) - 65;
+                    const totalRows = Object.keys(seatsByRow).length;
+                    isCouch = rowNumber >= totalRows - 2;
+                  }
+          
           return (
-            <button
-              key={seat}
-              className={`seat 
-                ${isBooked ? "booked" : ""} 
-                ${isSelected ? "selected" : ""}`}
-              onClick={() => toggleSeat(seat)}
-              disabled={isBooked}
-            >
-              {seat}
-            </button>
-          )
+            <div key={rowLetter} className="seats-row">
+              <div className="row-label">{rowLetter}</div>
+              
+              <div className="seats-container">
+                {rowSeats.map(seat => {
+                  const isBooked = bookedSeats.includes(seat);
+                  const isSelected = selectedSeats.includes(seat);
+                  
+                  return (
+                    <button
+                      key={seat}
+                      className={`seat 
+                        ${isBooked ? "booked" : ""} 
+                        ${isSelected ? "selected" : ""}
+                        ${isCouch ? "couch" : ""}
+                        ${hallType === 'vip' ? "vip" : ""}`}
+                      onClick={() => toggleSeat(seat)}
+                      disabled={isBooked}
+                      title={isCouch ? (hallType === 'vip' ? "Kanapa VIP (2 miejsca = 70 zł)" : "Kanapa (2 miejsca = 2x cena)") : (hallType === 'vip' ? "Fotel VIP (35 zł)" : seat)}
+                    >
+                      {isCouch ? (
+                        <img 
+                          src="https://cdn-icons-png.flaticon.com/512/1203/1203087.png" 
+                          alt="Kanapa" 
+                          className="seat-icon-couch"
+                        />
+                      ) : (
+                        <img 
+                          src="https://static.thenounproject.com/png/2049821-200.png" 
+                          alt="Fotel" 
+                          className="seat-icon-chair"
+                        />
+                      )}
+                      <span className="seat-number">{seat.slice(1)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <div className="row-label">{rowLetter}</div>
+            </div>
+          );
         })}
       </div>
+      
+      {/* Legenda na dole */}
+      <div className="screen-bottom">
+        {/* Legenda miejsc */}
+        <div className="seats-legend">
+          <div className="legend-item">
+            <div className="legend-icon seat-available">
+              <img 
+                src="https://static.thenounproject.com/png/2049821-200.png" 
+                alt="Fotel" 
+                className="seat-icon-chair"
+              />
+            </div>
+            <span>Miejsca wolne</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-icon seat-selected">
+              <img 
+                src="https://static.thenounproject.com/png/2049821-200.png" 
+                alt="Fotel" 
+                className="seat-icon-chair"
+              />
+            </div>
+            <span>Wybrane miejsca</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-icon seat-booked">
+              <img 
+                src="https://static.thenounproject.com/png/2049821-200.png" 
+                alt="Fotel" 
+                className="seat-icon-chair"
+              />
+            </div>
+            <span>Miejsca zajęte</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-icon seat-couch">
+              <img 
+                src="https://cdn-icons-png.flaticon.com/512/1203/1203087.png" 
+                alt="Kanapa" 
+                className="seat-icon-couch"
+              />
+            </div>
+            <span>{hallType === 'vip' ? 'Kanapa VIP' : 'Kanapa'}</span>
+          </div>
+          {hallType === 'vip' && (
+            <div className="legend-item">
+              <div className="legend-icon seat-available vip-seat">
+                <img 
+                  src="https://static.thenounproject.com/png/2049821-200.png" 
+                  alt="Fotel VIP" 
+                  className="seat-icon-chair"
+                />
+              </div>
+              <span>Fotel VIP</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <p style={{ textAlign: 'center', marginTop: '20px', opacity: 0.7, fontSize: '0.9em' }}>
+        Nie pozostawiaj pustego miejsca między wybranymi miejscami.
+      </p>
     </div>
 
-    {/* корзина */}
+    {/* Panel wyboru - ulepszony design */}
     <div className="reservation-right">
-      <h2>Mój wybór</h2>
-      <p>Miejsca: {selectedSeats.join(", ") || "nie wybrałeś"}</p>
-      <p>Cena: {selectedSeats.length * session.price} zł</p>
-      <button
-  className="btn"
-  disabled={!selectedSeats.length}
-  onClick={() => {
-    console.log("Button clicked");   // DEBUG
-    purchase();
-  }}
->
-  Kupić
-</button>
-      {clientSecret && (
-        <div style={{marginTop: 16}}>
-          <PaymentForm
-            clientSecret={clientSecret}
-            amountPln={selectedSeats.length * session.price}
-            onSuccess={() => {
-              showToast('success', 'Płatność zakończona!')
-              navigate('/dashboard')
-            }}
-          />
+      <div className="reservation-summary-card">
+        <h2 style={{ marginTop: 0, color: 'var(--primary)', borderBottom: '2px solid var(--primary)', paddingBottom: '10px' }}>
+          Twój wybór
+        </h2>
+        
+        <div className="summary-section">
+          <div className="summary-item">
+            <span className="summary-label">Film:</span>
+            <span className="summary-value">{session.title}</span>
+          </div>
+          
+          <div className="summary-item">
+            <span className="summary-label">Data:</span>
+            <span className="summary-value">{new Date(session.datetime).toLocaleString("pl-PL")}</span>
+          </div>
+          
+          {session.hall_name && (
+            <div className="summary-item">
+              <span className="summary-label">Sala:</span>
+              <span className="summary-value">{session.hall_name}</span>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="seats-summary">
+          <div className="summary-item">
+            <span className="summary-label">Wybrane miejsca:</span>
+            <div className="selected-seats-list">
+              {selectedSeats.length > 0 ? (
+                selectedSeats.map(seat => (
+                  <span key={seat} className="seat-badge">{seat}</span>
+                ))
+              ) : (
+                <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Nie wybrano miejsc</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="price-summary">
+          <div className="price-row">
+            <span>Liczba miejsc:</span>
+            <strong>{selectedSeats.length}</strong>
+          </div>
+          {selectedSeats.length > 0 && (
+            <>
+              {(() => {
+                // Funkcja pomocnicza do określania czy miejsce to kanapa
+                const isSeatCouch = (seat) => {
+                  const rowLetter = seat[0];
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: rzędy F-G to kanapy VIP
+                    return ['F', 'G'].includes(rowLetter);
+                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+                    return ['I', 'J'].includes(rowLetter);
+                  } else {
+                    // Standardowy układ: ostatnie 2 rzędy to kanapy
+                    const rowNumber = rowLetter.charCodeAt(0) - 65;
+                    const totalRows = Object.keys(seatsByRow).length;
+                    return rowNumber >= totalRows - 2;
+                  }
+                };
+                
+                const couchSeats = selectedSeats.filter(isSeatCouch);
+                const normalSeats = selectedSeats.filter(s => !isSeatCouch(s));
+                
+                return (
+                  <>
+                    {couchSeats.length > 0 && (
+                      <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
+                        <span>{hallType === 'vip' ? 'Kanapy VIP (70 zł):' : 'Kanapy (2x cena):'}</span>
+                        <span>
+                          {couchSeats.length} × {hallType === 'vip' ? '70.00' : (parseFloat(session.price) * 2).toFixed(2)} zł
+                        </span>
+                      </div>
+                    )}
+                    {normalSeats.length > 0 && (
+                      <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
+                        <span>{hallType === 'vip' ? 'Fotele VIP (35 zł):' : 'Zwykłe miejsca:'}</span>
+                        <span>
+                          {normalSeats.length} × {hallType === 'vip' ? '35.00' : parseFloat(session.price).toFixed(2)} zł
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </>
+          )}
+          <div className="price-total">
+            <span>Razem:</span>
+            <strong style={{ fontSize: '1.5em', color: 'var(--primary)' }}>
+              {(() => {
+                const isSeatCouch = (seat) => {
+                  const rowLetter = seat[0];
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: rzędy F-G to kanapy VIP
+                    return ['F', 'G'].includes(rowLetter);
+                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+                    return ['I', 'J'].includes(rowLetter);
+                  } else {
+                    // Standardowy układ: ostatnie 2 rzędy to kanapy
+                    const rowNumber = rowLetter.charCodeAt(0) - 65;
+                    const totalRows = Object.keys(seatsByRow).length;
+                    return rowNumber >= totalRows - 2;
+                  }
+                };
+                
+                const totalPrice = selectedSeats.reduce((sum, seat) => {
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: fotele VIP = 35 zł, kanapy VIP = 70 zł
+                    return sum + (isSeatCouch(seat) ? 70 : 35);
+                  } else {
+                    const isCouch = isSeatCouch(seat);
+                    return sum + (isCouch ? parseFloat(session.price) * 2 : parseFloat(session.price));
+                  }
+                }, 0);
+                return totalPrice.toFixed(2);
+              })()} zł
+            </strong>
+          </div>
+        </div>
+
+        <button
+          className="btn purchase-btn"
+          disabled={!selectedSeats.length}
+          onClick={purchase}
+          style={{
+            width: '100%',
+            padding: '14px',
+            fontSize: '1.1em',
+            marginTop: '20px',
+            opacity: selectedSeats.length ? 1 : 0.5,
+            cursor: selectedSeats.length ? 'pointer' : 'not-allowed'
+          }}
+        >
+          {selectedSeats.length ? `Kup ${selectedSeats.length} ${selectedSeats.length === 1 ? 'bilet' : 'bilety'}` : 'Wybierz miejsca'}
+        </button>
+
+        {clientSecret && (
+          <div style={{marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+            <h3 style={{ fontSize: '1.1em', marginBottom: '10px' }}>Płatność</h3>
+            <PaymentForm
+              clientSecret={clientSecret}
+              amountPln={(() => {
+                const isSeatCouch = (seat) => {
+                  const rowLetter = seat[0];
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: rzędy F-G to kanapy VIP
+                    return ['F', 'G'].includes(rowLetter);
+                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+                    return ['I', 'J'].includes(rowLetter);
+                  } else {
+                    // Standardowy układ: ostatnie 2 rzędy to kanapy
+                    const rowNumber = rowLetter.charCodeAt(0) - 65;
+                    const totalRows = Object.keys(seatsByRow).length;
+                    return rowNumber >= totalRows - 2;
+                  }
+                };
+                
+                const totalPrice = selectedSeats.reduce((sum, seat) => {
+                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
+                    // Sala 4 VIP: fotele VIP = 35 zł, kanapy VIP = 70 zł
+                    return sum + (isSeatCouch(seat) ? 70 : 35);
+                  } else {
+                    const isCouch = isSeatCouch(seat);
+                    return sum + (isCouch ? parseFloat(session.price) * 2 : parseFloat(session.price));
+                  }
+                }, 0);
+                return totalPrice;
+              })()}
+              onSuccess={() => {
+                showToast('success', 'Płatność zakończona!')
+                navigate('/dashboard')
+              }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   </div>
 )
