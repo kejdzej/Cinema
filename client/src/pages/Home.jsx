@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../services/api.js'
 import MovieCard from '../components/MovieCard.jsx'
@@ -8,11 +8,17 @@ import Aktualnosci from '../components/Aktualnosci.jsx'
 
 import SliderHero from "../components/Slider.jsx";
 
+const normalizeDate = (value) => {
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return null
+  date.setHours(0, 0, 0, 0)
+  return date
+}
 
 export default function Home() {
   const [movies, setMovies] = useState([])
   const [sessions, setSessions] = useState([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(() => normalizeDate(new Date()) || new Date())
   const location = useLocation()
   const search = location.state?.search?.toLowerCase() || ""
 
@@ -26,19 +32,51 @@ export default function Home() {
       .catch(() => {})
   }, [])
 
-  const getWeekDates = () => {
-    const days = []
+  const calendarDates = useMemo(() => {
+    const datesMap = new Map()
+
+    const addDate = (value) => {
+      const normalized = normalizeDate(value)
+      if (!normalized) return
+      datesMap.set(normalized.toDateString(), normalized)
+    }
+
+    // Domyślnie pokaż najbliższe 7 dni, żeby użytkownik mógł szybko zmieniać zakres
     for (let i = 0; i < 7; i++) {
       const d = new Date()
       d.setDate(d.getDate() + i)
-      days.push(d)
+      addDate(d)
     }
-    return days
-  }
+
+    // Dodaj wszystkie unikalne daty z seansami (również te poza tygodniem)
+    sessions.forEach(session => {
+      if (!session?.datetime) return
+      addDate(session.datetime)
+    })
+
+    return Array.from(datesMap.values()).sort((a, b) => a - b)
+  }, [sessions])
+
+  useEffect(() => {
+    if (!calendarDates.length || !selectedDate) return
+    const hasSelected = calendarDates.some(
+      (date) => date.toDateString() === selectedDate.toDateString()
+    )
+
+    if (!hasSelected) {
+      const today = normalizeDate(new Date())
+      const fallback =
+        calendarDates.find((date) => today && date >= today) ||
+        calendarDates[calendarDates.length - 1]
+      if (fallback) {
+        setSelectedDate(fallback)
+      }
+    }
+  }, [calendarDates, selectedDate])
 
   const filteredSessions = sessions.filter(s => {
     // Sprawdź czy session i datetime istnieją
-    if (!s || !s.datetime) return false;
+    if (!s || !s.datetime || !selectedDate) return false;
     
     try {
       const sessionDate = new Date(s.datetime);
@@ -65,10 +103,10 @@ export default function Home() {
         {search && <p>Wyniki wyszukiwania dla: <b>{search}</b></p>}
 
         <div className="week-strip">
-          {getWeekDates().map((d, idx) => (
+          {calendarDates.map((d, idx) => (
             <button
               key={idx}
-              className={`day-btn ${d.toDateString() === selectedDate.toDateString() ? "active" : ""}`}
+              className={`day-btn ${selectedDate && d.toDateString() === selectedDate.toDateString() ? "active" : ""}`}
               onClick={() => setSelectedDate(d)}
             >
               {d.toLocaleDateString("pl-PL", { weekday:"short", day:"2-digit", month:"2-digit" })}
