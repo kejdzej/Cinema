@@ -20,7 +20,7 @@ export default function Login() {
       const res = await api.post('/auth/login', { email, password })
       
       const token = res.data.token
-      setAuthToken(token) // <-- вот здесь добавили
+      setAuthToken(token) 
       login(res.data) // сохраняем данные в контекст/стейт
 
       showToast('success', 'Zalogowano pomyślnie')
