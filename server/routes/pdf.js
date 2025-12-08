@@ -17,7 +17,7 @@ router.get("/ticket/:id", async (req, res) => {
 
   try {
     const [ticketRows] = await pool.query(
-      `SELECT t.id, t.seats, t.price, t.created_at, s.datetime, s.hall_id, s.format, s.price as session_price,
+      `SELECT t.id, t.seats, t.price, t.status, t.created_at, s.datetime, s.hall_id, s.format, s.price as session_price,
               m.title, m.duration, h.name as hall_name, h.capacity as hall_capacity, h.description as hall_type
        FROM tickets t
        JOIN sessions s ON t.session_id = s.id
@@ -32,50 +32,55 @@ router.get("/ticket/:id", async (req, res) => {
     }
 
     const ticket = ticketRows[0];
+    const isRewardTicket = ticket.status === 'free' || Number(ticket.price) === 0;
     
-    // Przelicz cenę (tak jak w /tickets/:id) - zawsze aktualna cena
-    const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
-    const hallName = ticket.hall_name || '';
-    const hallType = ticket.hall_type || 'standard';
-    const hallCapacity = parseInt(ticket.hall_capacity) || 40;
-    const sessionPrice = typeof ticket.session_price === 'string' 
-      ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
-      : parseFloat(ticket.session_price) || 0;
-    
-    // Funkcja pomocnicza do określania czy miejsce to kanapa
-    const isSeatCouch = (seat) => {
-      const rowLetter = seat.trim()[0];
-      if (hallType === 'vip' && hallName.includes('Sala 4')) {
-        return ['F', 'G'].includes(rowLetter);
-      } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-        return ['I', 'J'].includes(rowLetter);
-      } else {
-        const rowNumber = rowLetter.charCodeAt(0);
-        if (hallCapacity === 72) {
-          return rowNumber >= 72; // H = 72, I = 73
-        } else if (hallCapacity === 50) {
-          // Sala 2: tylko D i E są kanapami
-          return rowNumber === 68 || rowNumber === 69; // D = 68, E = 69
+    if (!isRewardTicket) {
+      // Przelicz cenę (tak jak w /tickets/:id) - zawsze aktualna cena
+      const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
+      const hallName = ticket.hall_name || '';
+      const hallType = ticket.hall_type || 'standard';
+      const hallCapacity = parseInt(ticket.hall_capacity) || 40;
+      const sessionPrice = typeof ticket.session_price === 'string' 
+        ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
+        : parseFloat(ticket.session_price) || 0;
+      
+      // Funkcja pomocnicza do określania czy miejsce to kanapa
+      const isSeatCouch = (seat) => {
+        const rowLetter = seat.trim()[0];
+        if (hallType === 'vip' && hallName.includes('Sala 4')) {
+          return ['F', 'G'].includes(rowLetter);
+        } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+          return ['I', 'J'].includes(rowLetter);
         } else {
-          return rowNumber >= 70; // F = 70, G = 71
+          const rowNumber = rowLetter.charCodeAt(0);
+          if (hallCapacity === 72) {
+            return rowNumber >= 72; // H = 72, I = 73
+          } else if (hallCapacity === 50) {
+            // Sala 2: tylko D i E są kanapami
+            return rowNumber === 68 || rowNumber === 69; // D = 68, E = 69
+          } else {
+            return rowNumber >= 70; // F = 70, G = 71
+          }
+        }
+      };
+      
+      // Przelicz cenę
+      let recalculatedPrice = 0;
+      for (const seat of seatArr) {
+        if (hallType === 'vip' && hallName.includes('Sala 4')) {
+          recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
+        } else {
+          const isCouch = isSeatCouch(seat);
+          recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
         }
       }
-    };
-    
-    // Przelicz cenę
-    let recalculatedPrice = 0;
-    for (const seat of seatArr) {
-      if (hallType === 'vip' && hallName.includes('Sala 4')) {
-        recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
-      } else {
-        const isCouch = isSeatCouch(seat);
-        recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
-      }
+      recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
+      
+      // Użyj przeliczonej ceny
+      ticket.price = recalculatedPrice;
+    } else {
+      ticket.price = 0;
     }
-    recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
-    
-    // Użyj przeliczonej ceny
-    ticket.price = recalculatedPrice;
 
     // Generuj QR kod
     const qrData = `TICKET:${ticket.id}|${ticket.title}|${ticket.seats}|${ticket.datetime}`;
@@ -126,7 +131,7 @@ router.get("/ticket/:id", async (req, res) => {
     
     doc.text(`Miejsca: ${ticket.seats}`);
     const price = typeof ticket.price === 'number' ? ticket.price : parseFloat(ticket.price) || 0;
-    doc.text(`Cena: ${price.toFixed(2)} PLN`);
+    doc.text(`Cena: ${price.toFixed(2)} PLN${isRewardTicket ? ' (Bilet lojalnościowy)' : ''}`);
     doc.text(`Data zakupu: ${new Date(ticket.created_at).toLocaleString("pl-PL")}`);
 
     doc.moveDown(1);

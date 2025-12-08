@@ -2,8 +2,37 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import QRCode from "qrcode";
+import { BASE_POINTS_FOR_PURCHASE, FREE_TICKET_COST } from "./loyalty.js";
 
 const router = Router();
+
+const MIN_POINTS_PER_PURCHASE = BASE_POINTS_FOR_PURCHASE || 50;
+
+const calculateNumericPrice = (value) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d.-]/g, "");
+    const parsed = parseFloat(cleaned);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+const calculatePointsForAmount = (amount) => {
+  const numeric = calculateNumericPrice(amount);
+  if (numeric <= 0) return MIN_POINTS_PER_PURCHASE;
+  return Math.max(MIN_POINTS_PER_PURCHASE, Math.round(numeric));
+};
+
+const markRewardTicket = (ticket) => {
+  const isReward = ticket.status === "free" || Number(ticket.price) === 0;
+  ticket.is_free = isReward;
+  if (isReward) {
+    ticket.reward_label = "Bilet lojalnościowy";
+    ticket.price = 0;
+  }
+  return ticket;
+};
 
 // zakup biletu
 router.post("/purchase", authRequired, async (req, res) => {
@@ -93,25 +122,28 @@ router.post("/purchase", authRequired, async (req, res) => {
       [session_id, req.user.id, seatStr, totalPrice]
     );
 
-    // **Начисляем 100 пунктов за покупку**
-    const pointsToAdd = 100;
+    const pointsToAdd = calculatePointsForAmount(totalPrice);
     await pool.query(
       "UPDATE users SET points = points + ? WHERE id = ?",
       [pointsToAdd, req.user.id]
     );
+    const [[balanceRow]] = await pool.query(
+      "SELECT points FROM users WHERE id = ?",
+      [req.user.id]
+    );
+    const balanceAfter = balanceRow?.points || 0;
 
-    // Записываем историю начисления очков
     await pool.query(
-  "INSERT INTO loyalty_history (user_id, change_amount, description) VALUES (?, ?, ?)",
-  [req.user.id, pointsToAdd, 'Zakup biletu']
-);
-
+      "INSERT INTO loyalty_history (user_id, change_amount, description, points) VALUES (?, ?, ?, ?)",
+      [req.user.id, pointsToAdd, "Zakup biletu", balanceAfter]
+    );
 
     res.json({
       ticket_id: result.insertId,
       amount: totalPrice,
       status: "confirmed",
-      pointsAdded: pointsToAdd
+      pointsAdded: pointsToAdd,
+      newBalance: balanceAfter
     });
   } catch (e) {
   console.error("PURCHASE ERROR:", e.sqlMessage || e);
@@ -125,7 +157,7 @@ router.get("/mine", authRequired, async (req, res) => {
   try {
     const [rows] = await pool.query(
       `
-      SELECT t.id, t.seats, t.price, t.created_at, t.session_id, s.datetime, s.format, s.price as session_price, s.hall_id, 
+      SELECT t.id, t.seats, t.price, t.status, t.created_at, t.session_id, s.datetime, s.format, s.price as session_price, s.hall_id, 
              m.title, h.name as hall_name, h.description as hall_type, h.capacity as hall_capacity
       FROM tickets t
       JOIN sessions s ON s.id = t.session_id
@@ -139,48 +171,51 @@ router.get("/mine", authRequired, async (req, res) => {
 
     // Przelicz cenę dla każdego biletu (na wypadek błędnych cen w bazie)
     for (let ticket of rows) {
-      const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
-      const hallName = ticket.hall_name || '';
-      const hallType = ticket.hall_type || 'standard';
-      const hallCapacity = parseInt(ticket.hall_capacity) || 40;
-      const sessionPrice = typeof ticket.session_price === 'string' 
-        ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
-        : parseFloat(ticket.session_price) || 0;
-      
-      // Funkcja pomocnicza do określania czy miejsce to kanapa (ta sama co w purchase)
-      const isSeatCouch = (seat) => {
-        const rowLetter = seat.trim()[0];
-        if (hallType === 'vip' && hallName.includes('Sala 4')) {
-          return ['F', 'G'].includes(rowLetter);
-        } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-          return ['I', 'J'].includes(rowLetter);
-        } else {
-          const rowNumber = rowLetter.charCodeAt(0);
-          if (hallCapacity === 72) {
-            return rowNumber >= 72;
-          } else if (hallCapacity === 50) {
-            // Poprawka: tylko D i E są kanapami
-            return rowNumber === 68 || rowNumber === 69;
+      markRewardTicket(ticket);
+      if (!ticket.is_free) {
+        const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
+        const hallName = ticket.hall_name || '';
+        const hallType = ticket.hall_type || 'standard';
+        const hallCapacity = parseInt(ticket.hall_capacity) || 40;
+        const sessionPrice = typeof ticket.session_price === 'string' 
+          ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
+          : parseFloat(ticket.session_price) || 0;
+        
+        // Funkcja pomocnicza do określania czy miejsce to kanapa (ta sama co w purchase)
+        const isSeatCouch = (seat) => {
+          const rowLetter = seat.trim()[0];
+          if (hallType === 'vip' && hallName.includes('Sala 4')) {
+            return ['F', 'G'].includes(rowLetter);
+          } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+            return ['I', 'J'].includes(rowLetter);
           } else {
-            return rowNumber >= 70;
+            const rowNumber = rowLetter.charCodeAt(0);
+            if (hallCapacity === 72) {
+              return rowNumber >= 72;
+            } else if (hallCapacity === 50) {
+              // Poprawka: tylko D i E są kanapami
+              return rowNumber === 68 || rowNumber === 69;
+            } else {
+              return rowNumber >= 70;
+            }
+          }
+        };
+        
+        // Przelicz cenę
+        let recalculatedPrice = 0;
+        for (const seat of seatArr) {
+          if (hallType === 'vip' && hallName.includes('Sala 4')) {
+            recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
+          } else {
+            const isCouch = isSeatCouch(seat);
+            recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
           }
         }
-      };
-      
-      // Przelicz cenę
-      let recalculatedPrice = 0;
-      for (const seat of seatArr) {
-        if (hallType === 'vip' && hallName.includes('Sala 4')) {
-          recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
-        } else {
-          const isCouch = isSeatCouch(seat);
-          recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
-        }
+        recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
+        
+        // Użyj przeliczonej ceny (zawsze aktualna)
+        ticket.price = recalculatedPrice;
       }
-      recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
-      
-      // Użyj przeliczonej ceny (zawsze aktualna)
-      ticket.price = recalculatedPrice;
       
       // Добавляем QR-код к каждому билету
       ticket.qr = await QRCode.toDataURL(`ticket:${ticket.id}`);
@@ -227,51 +262,53 @@ router.get("/:id", authRequired, async (req, res) => {
       return res.status(404).json({ message: "Bilet nie znaleziony" });
     }
 
-    const ticket = tickets[0];
+    const ticket = markRewardTicket(tickets[0]);
 
-    // Przelicz cenę (tak jak w /mine) - zawsze aktualna cena
-    const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
-    const hallName = ticket.hall_name || '';
-    const hallType = ticket.hall_type || 'standard';
-    const hallCapacity = parseInt(ticket.hall_capacity) || 40;
-    const sessionPrice = typeof ticket.session_price === 'string' 
-      ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
-      : parseFloat(ticket.session_price) || 0;
-    
-    // Funkcja pomocnicza do określania czy miejsce to kanapa (ta sama co w purchase)
-    const isSeatCouch = (seat) => {
-      const rowLetter = seat.trim()[0];
-      if (hallType === 'vip' && hallName.includes('Sala 4')) {
-        return ['F', 'G'].includes(rowLetter);
-      } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-        return ['I', 'J'].includes(rowLetter);
-      } else {
-        const rowNumber = rowLetter.charCodeAt(0);
-        if (hallCapacity === 72) {
-          return rowNumber >= 72; // H = 72, I = 73
-        } else if (hallCapacity === 50) {
-          // Sala 2: tylko D i E są kanapami
-          return rowNumber === 68 || rowNumber === 69; // D = 68, E = 69
+    if (!ticket.is_free) {
+      // Przelicz cenę (tak jak w /mine) - zawsze aktualna cena
+      const seatArr = ticket.seats ? String(ticket.seats).split(',').map(s => s.trim()) : [];
+      const hallName = ticket.hall_name || '';
+      const hallType = ticket.hall_type || 'standard';
+      const hallCapacity = parseInt(ticket.hall_capacity) || 40;
+      const sessionPrice = typeof ticket.session_price === 'string' 
+        ? parseFloat(ticket.session_price.replace(/[^\d.-]/g, '')) 
+        : parseFloat(ticket.session_price) || 0;
+      
+      // Funkcja pomocnicza do określania czy miejsce to kanapa (ta sama co w purchase)
+      const isSeatCouch = (seat) => {
+        const rowLetter = seat.trim()[0];
+        if (hallType === 'vip' && hallName.includes('Sala 4')) {
+          return ['F', 'G'].includes(rowLetter);
+        } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
+          return ['I', 'J'].includes(rowLetter);
         } else {
-          return rowNumber >= 70; // F = 70, G = 71
+          const rowNumber = rowLetter.charCodeAt(0);
+          if (hallCapacity === 72) {
+            return rowNumber >= 72; // H = 72, I = 73
+          } else if (hallCapacity === 50) {
+            // Sala 2: tylko D i E są kanapami
+            return rowNumber === 68 || rowNumber === 69; // D = 68, E = 69
+          } else {
+            return rowNumber >= 70; // F = 70, G = 71
+          }
+        }
+      };
+      
+      // Przelicz cenę
+      let recalculatedPrice = 0;
+      for (const seat of seatArr) {
+        if (hallType === 'vip' && hallName.includes('Sala 4')) {
+          recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
+        } else {
+          const isCouch = isSeatCouch(seat);
+          recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
         }
       }
-    };
-    
-    // Przelicz cenę
-    let recalculatedPrice = 0;
-    for (const seat of seatArr) {
-      if (hallType === 'vip' && hallName.includes('Sala 4')) {
-        recalculatedPrice += (isSeatCouch(seat) ? 70 : 35);
-      } else {
-        const isCouch = isSeatCouch(seat);
-        recalculatedPrice += (isCouch ? sessionPrice * 2 : sessionPrice);
-      }
+      recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
+      
+      // Użyj przeliczonej ceny
+      ticket.price = recalculatedPrice;
     }
-    recalculatedPrice = Math.round(recalculatedPrice * 100) / 100;
-    
-    // Użyj przeliczonej ceny
-    ticket.price = recalculatedPrice;
 
     // generowanie QR
     const qrData = `Ticket ID: ${ticket.id}, Film: ${ticket.title}, Miejsca: ${ticket.seats}, Data: ${ticket.datetime}`;
@@ -325,18 +362,31 @@ router.delete("/:id", authRequired, async (req, res) => {
     // Usuń bilet
     await pool.query("DELETE FROM tickets WHERE id = ?", [id]);
 
-    // Zwróć punkty lojalnościowe (100 punktów za bilet)
-    const pointsToReturn = 100;
-    await pool.query(
-      "UPDATE users SET points = points - ? WHERE id = ? AND points >= ?",
-      [pointsToReturn, req.user.id, pointsToReturn]
-    );
+    // Korekta punktów lojalnościowych
+    const isRewardTicket = ticket.status === 'free' || Number(ticket.price) === 0;
+    const pointsDelta = isRewardTicket
+      ? FREE_TICKET_COST
+      : -calculatePointsForAmount(ticket.price);
 
-    // Zapisz w historii
-    await pool.query(
-      "INSERT INTO loyalty_history (user_id, change_amount, description) VALUES (?, ?, ?)",
-      [req.user.id, -pointsToReturn, 'Anulowanie biletu']
-    );
+    if (pointsDelta !== 0) {
+      await pool.query(
+        "UPDATE users SET points = points + ? WHERE id = ?",
+        [pointsDelta, req.user.id]
+      );
+      const [[balanceRow]] = await pool.query(
+        "SELECT points FROM users WHERE id = ?",
+        [req.user.id]
+      );
+      await pool.query(
+        "INSERT INTO loyalty_history (user_id, change_amount, description, points) VALUES (?, ?, ?, ?)",
+        [
+          req.user.id,
+          pointsDelta,
+          isRewardTicket ? 'Zwrot punktów za darmowy bilet' : 'Korekta za anulowanie biletu',
+          balanceRow?.points || 0
+        ]
+      );
+    }
 
     // Jeśli była płatność, oznacz jako refunded
     if (payments.length > 0) {
@@ -348,7 +398,7 @@ router.delete("/:id", authRequired, async (req, res) => {
 
     res.json({ 
       message: "Bilet anulowany pomyślnie",
-      pointsReturned: pointsToReturn,
+      pointsChange: pointsDelta,
       refundRequired: payments.length > 0
     });
   } catch (error) {
