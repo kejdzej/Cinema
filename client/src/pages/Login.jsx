@@ -19,7 +19,6 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { email, password })
       
-      // --- сохраняем токен для будущих запросов ---
       const token = res.data.token
       setAuthToken(token) // <-- вот здесь добавили
       login(res.data) // сохраняем данные в контекст/стейт
