@@ -12,7 +12,9 @@ export default function SessionButton({ session }) {
       showToast("error", "Musisz się zalogować")
       navigate("/login")
     } else {
-      navigate(`/reservation/${session.id}`) 
+      const reward = sessionStorage.getItem("loyaltyReward");
+      const target = reward ? `/reservation/${session.id}?reward=${reward}` : `/reservation/${session.id}`;
+      navigate(target);
     }
   }
 

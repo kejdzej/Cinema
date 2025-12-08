@@ -10,7 +10,7 @@ export default function LoyaltyPoints() {
     if (token) setAuthToken(token);
 
     // Запрос к серверу за очками лояльности
-    api.get("/loyalty/points")
+    api.get("/loyalty/balance")
       .then(res => setPoints(res.data.points))
       .catch(err => {
         console.error("Ошибка при получении очков:", err);

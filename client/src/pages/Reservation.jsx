@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { api } from "../services/api.js"
 import PaymentForm from "../components/PaymentForm.jsx"
 import { useToast } from "../App.jsx"
 
 export default function Reservation() {
   const { id } = useParams()
+  const location = useLocation();
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedSeats, setSelectedSeats] = useState([])
@@ -13,6 +14,16 @@ export default function Reservation() {
   const [clientSecret, setClientSecret] = useState(null)
   const { showToast } = useToast()
   const navigate = useNavigate();
+  const rewardParam = new URLSearchParams(location.search).get('reward');
+  const storedReward = typeof window !== "undefined" ? sessionStorage.getItem("loyaltyReward") : null;
+  const activeReward = rewardParam || storedReward || null;
+  const isRewardMode = activeReward === 'free-ticket';
+
+  useEffect(() => {
+    if (isRewardMode) {
+      setClientSecret(null);
+    }
+  }, [isRewardMode]);
 
   // ladowanie seansu i miejsc zajetych 
   useEffect(() => {
@@ -69,6 +80,18 @@ export default function Reservation() {
   }
   
   try {
+    setClientSecret(null);
+    if (isRewardMode) {
+      const response = await api.post("/loyalty/redeem/free-ticket", {
+        session_id: session.id,
+        seats: selectedSeats
+      });
+      showToast("success", "Darmowy bilet został zapisany!");
+      sessionStorage.removeItem("loyaltyReward");
+      navigate(`/ticket/${response.data.ticket_id}`);
+      return;
+    }
+
     const response = await api.post("/tickets/purchase", {
       session_id: session.id,
       seats: selectedSeats
@@ -90,6 +113,15 @@ export default function Reservation() {
     showToast("error", e?.response?.data?.message || "Błąd zakupu");
   }
 };
+
+  const cancelRewardMode = () => {
+    sessionStorage.removeItem("loyaltyReward");
+    if (rewardParam) {
+      navigate(`/reservation/${id}`, { replace: true });
+    } else {
+      showToast("info", "Darmowy bilet został wyłączony.");
+    }
+  };
 
 
   if (loading) return <div className="container">Ładowanie...</div>
@@ -409,6 +441,22 @@ export default function Reservation() {
         </h2>
         
         <div className="summary-section">
+          {isRewardMode && (
+            <div className="summary-item" style={{ background: 'rgba(34,197,94,0.15)', padding: '10px', borderRadius: '8px', marginBottom: '15px' }}>
+              <strong style={{ color: '#34d399' }}>Używasz darmowego biletu lojalnościowego.</strong>
+              <p style={{ marginTop: '6px', fontSize: '0.9em', opacity: 0.85 }}>
+                Po potwierdzeniu rezerwacji cena wyniesie 0 zł, a bilet trafi prosto do zakładki „Moje bilety”.
+              </p>
+              <button
+                className="btn"
+                style={{ marginTop: '10px', background: 'rgba(244,63,94,0.2)', color: '#f87171' }}
+                onClick={cancelRewardMode}
+              >
+                Anuluj darmowy bilet
+              </button>
+            </div>
+          )}
+
           <div className="summary-item">
             <span className="summary-label">Film:</span>
             <span className="summary-value">{session.title}</span>
@@ -539,10 +587,14 @@ export default function Reservation() {
             cursor: selectedSeats.length ? 'pointer' : 'not-allowed'
           }}
         >
-          {selectedSeats.length ? `Kup ${selectedSeats.length} ${selectedSeats.length === 1 ? 'bilet' : 'bilety'}` : 'Wybierz miejsca'}
+          {selectedSeats.length ? (
+            isRewardMode
+              ? `Odbierz darmowy bilet`
+              : `Kup ${selectedSeats.length} ${selectedSeats.length === 1 ? 'bilet' : 'bilety'}`
+          ) : 'Wybierz miejsca'}
         </button>
 
-        {clientSecret && (
+        {!isRewardMode && clientSecret && (
           <div style={{marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)'}}>
             <h3 style={{ fontSize: '1.1em', marginBottom: '10px' }}>Płatność</h3>
             <PaymentForm

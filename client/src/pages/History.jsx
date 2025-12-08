@@ -88,7 +88,7 @@ export default function History() {
                       {new Date(t.datetime).toLocaleString("pl-PL")}
                     </div>
                     <div>Miejsca: {t.seats}</div>
-                    <div>Cena: {t.price} zł</div>
+                    <div>Cena: {t.is_free ? <span style={{ color: 'var(--primary)' }}>Gratis</span> : `${t.price} zł`}</div>
                     {isPast && (
                       <div style={{ 
                         marginTop: '10px', 

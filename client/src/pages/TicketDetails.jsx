@@ -47,7 +47,14 @@ export default function TicketDetails() {
           <p><b>Data seansu:</b> {new Date(ticket.datetime).toLocaleString("pl-PL")}</p>
           <p><b>Data zakupu:</b> {new Date(ticket.created_at).toLocaleString("pl-PL")}</p>
           <p><b>Miejsca:</b> {ticket.seats}</p>
-          <p><b>Cena:</b> {ticket.price} zł</p>
+          <p>
+            <b>Cena:</b>{" "}
+            {ticket.is_free ? (
+              <span style={{ color: 'var(--primary)' }}>Gratis (bilet lojalnościowy)</span>
+            ) : (
+              `${ticket.price} zł`
+            )}
+          </p>
         </div>
 
         {/* Правая часть — QR код */}

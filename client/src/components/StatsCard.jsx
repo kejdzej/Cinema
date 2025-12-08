@@ -17,7 +17,7 @@ export default function StatsCard() {
       const [ticketsRes, ordersRes, pointsRes] = await Promise.all([
         api.get('/tickets/mine').catch(() => ({ data: [] })),
         api.get('/orders').catch(() => ({ data: [] })),
-        api.get('/loyalty/points').catch(() => ({ data: { points: 0 } }))
+        api.get('/loyalty/balance').catch(() => ({ data: { points: 0 } }))
       ]);
 
       setStats({
@@ -62,4 +62,3 @@ export default function StatsCard() {
     </div>
   );
 }
-

@@ -35,11 +35,13 @@ export default function OrderDetails() {
           <h3>🛍 Produkty:</h3>
           <ul>
             {order.items.map((i, idx) => (
-              <li key={idx}>{i.qty} × {i.name} — {i.price * i.qty} zł</li>
+              <li key={idx}>
+                {(i.qty || 1)} × {i.name} — {i.price ? (i.price * (i.qty || 1)).toFixed(2) + " zł" : "Gratis"}
+              </li>
             ))}
           </ul>
           <hr />
-          <p><b>Razem:</b> {order.total} zł</p>
+          <p><b>Razem:</b> {Number(order.total) === 0 ? <span style={{ color: 'var(--primary)' }}>Gratis (punkty)</span> : `${order.total} zł`}</p>
         </div>
 
         {/* Правая колонка — QR */}
