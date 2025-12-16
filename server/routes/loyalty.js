@@ -29,7 +29,7 @@ const REWARD_CATALOG = [
   },
   {
     id: "movie-night",
-    name: "Zestaw dla dwojga",
+    name: "Zestaw x2",
     description: "650 pkt • Duży popcorn + dwa napoje.",
     cost: 650,
     type: "bar",
