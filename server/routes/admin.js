@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { adminRequired } from '../middleware/admin.js';
 import { authRequired } from '../middleware/auth.js'; // DODANY IMPORT
+import { ensureNewsTable } from './news.js';
 
 const router = Router();
 
@@ -370,6 +371,86 @@ router.delete('/halls/:id', authRequired, adminRequired, async (req, res) => {
     res.json({ message: 'Sala usunięta' });
   } catch (e) {
     console.error('Delete hall error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+// ========== ZARZĄDZANIE AKTUALNOŚCIAMI ==========
+
+router.get('/news', authRequired, adminRequired, async (req, res) => {
+  try {
+    await ensureNewsTable();
+    const [rows] = await pool.query(
+      `SELECT id, title, body, highlight, published_at, created_at, updated_at
+       FROM news
+       ORDER BY COALESCE(published_at, created_at) DESC, id DESC`
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('Admin news list error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+router.post('/news', authRequired, adminRequired, async (req, res) => {
+  try {
+    await ensureNewsTable();
+    const { title, body, highlight, published_at } = req.body || {};
+    if (!title || !body) {
+      return res.status(400).json({ message: 'Tytuł i treść są wymagane' });
+    }
+    const highlightValue = highlight ? 1 : 0;
+    const publishedAtValue = published_at ? new Date(published_at) : null;
+    const publishedAtFinal =
+      publishedAtValue && !isNaN(publishedAtValue.getTime())
+        ? publishedAtValue.toISOString().slice(0, 19).replace('T', ' ')
+        : null;
+
+    const [result] = await pool.query(
+      'INSERT INTO news (title, body, highlight, published_at) VALUES (?, ?, ?, ?)',
+      [String(title), String(body), highlightValue, publishedAtFinal]
+    );
+    res.json({ message: 'Aktualność dodana', id: result.insertId });
+  } catch (e) {
+    console.error('Admin news add error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+router.put('/news/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    await ensureNewsTable();
+    const { title, body, highlight, published_at } = req.body || {};
+    if (!title || !body) {
+      return res.status(400).json({ message: 'Tytuł i treść są wymagane' });
+    }
+    const highlightValue = highlight ? 1 : 0;
+    const publishedAtValue = published_at ? new Date(published_at) : null;
+    const publishedAtFinal =
+      publishedAtValue && !isNaN(publishedAtValue.getTime())
+        ? publishedAtValue.toISOString().slice(0, 19).replace('T', ' ')
+        : null;
+
+    const [result] = await pool.query(
+      'UPDATE news SET title = ?, body = ?, highlight = ?, published_at = ? WHERE id = ?',
+      [String(title), String(body), highlightValue, publishedAtFinal, parseInt(req.params.id)]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Aktualność nie znaleziona' });
+    res.json({ message: 'Aktualność zaktualizowana' });
+  } catch (e) {
+    console.error('Admin news update error:', e);
+    res.status(500).json({ message: 'Błąd serwera', error: e.message });
+  }
+});
+
+router.delete('/news/:id', authRequired, adminRequired, async (req, res) => {
+  try {
+    await ensureNewsTable();
+    const [result] = await pool.query('DELETE FROM news WHERE id = ?', [parseInt(req.params.id)]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Aktualność nie znaleziona' });
+    res.json({ message: 'Aktualność usunięta' });
+  } catch (e) {
+    console.error('Admin news delete error:', e);
     res.status(500).json({ message: 'Błąd serwera', error: e.message });
   }
 });
