@@ -25,11 +25,15 @@ DROP TABLE IF EXISTS `sessions`;
 CREATE TABLE `sessions` (
   `id` int NOT NULL AUTO_INCREMENT,
   `movie_id` int NOT NULL,
+  `hall_id` int DEFAULT NULL,
   `datetime` datetime NOT NULL,
   `price` decimal(10,2) NOT NULL DEFAULT '10.00',
+  `format` enum('2D','3D') DEFAULT '2D',
   PRIMARY KEY (`id`),
   KEY `movie_id` (`movie_id`),
-  CONSTRAINT `sessions_ibfk_1` FOREIGN KEY (`movie_id`) REFERENCES `movies` (`id`) ON DELETE CASCADE
+  KEY `hall_id` (`hall_id`),
+  CONSTRAINT `sessions_ibfk_1` FOREIGN KEY (`movie_id`) REFERENCES `movies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `sessions_ibfk_2` FOREIGN KEY (`hall_id`) REFERENCES `cinema_halls` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

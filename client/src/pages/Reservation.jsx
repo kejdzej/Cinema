@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { api } from "../services/api.js"
 import PaymentForm from "../components/PaymentForm.jsx"
 import { useToast } from "../App.jsx"
+import { getPriceBreakdown } from "../utils/pricingCalculator.js"
 
 export default function Reservation() {
   const { id } = useParams()
@@ -180,8 +181,8 @@ export default function Reservation() {
         seatsByRow[rowLetter].push(seat);
       }
     }
-  } else if (hallName.includes('Sala 3') || (hallType === 'mixed')) {
-    // Sala 3: 8 rzędów foteli po 8 + 2 rzędy kanap po 10
+  } else if (hallType === 'mixed') {
+    // Sala mixed: 8 rzędów foteli po 8 + 2 rzędy kanap po 10
     // Rzędy foteli (A-H): 8 rzędów po 8 foteli = 64 miejsca
     const normalRows = 8;
     const normalSeatsPerRow = 8;
@@ -207,8 +208,8 @@ export default function Reservation() {
       }
     }
     // Razem: 64 + 32 = 96 miejsc fizyczne
-  } else if (hallName.includes('Sala 4') || (hallType === 'vip')) {
-    // Sala 4 VIP: 5 rzędów foteli VIP (A-E) po 8 + 2 rzędy kanap VIP (F-G) po 8
+  } else if (hallType === 'vip') {
+    // Sala VIP: 5 rzędów foteli VIP (A-E) po 8 + 2 rzędy kanap VIP (F-G) po 8
     // Rzędy foteli VIP (A-E): 5 rzędów po 8 = 40 miejsc
     const vipRows = 5;
     const vipSeatsPerRow = 8;
@@ -276,6 +277,24 @@ export default function Reservation() {
     }
   }
 
+  // Funkcja pomocnicza do obliczania cen
+  const calculatePriceInfo = () => {
+    if (selectedSeats.length === 0 || !session) {
+      return { couchSeats: [], normalSeats: [], couchPrice: 0, normalPrice: 0, total: 0 };
+    }
+
+    const hallInfo = {
+      type: hallType,
+      name: hallName,
+      totalRows: Object.keys(seatsByRow).length
+    };
+
+    const sessionPrice = parseFloat(session.price);
+    return getPriceBreakdown(selectedSeats, hallInfo, sessionPrice);
+  };
+
+  const priceInfo = calculatePriceInfo();
+
   return (
   <div className="container reservation">
     <div className="reservation-left">
@@ -310,11 +329,11 @@ export default function Reservation() {
         {Object.entries(seatsByRow).map(([rowLetter, rowSeats]) => {
                   // Określ czy to kanapa na podstawie typu sali i rzędu
                   let isCouch = false;
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: rzędy F-G to kanapy VIP
+                  if (hallType === 'vip') {
+                    // Sala VIP: rzędy F-G to kanapy VIP
                     isCouch = ['F', 'G'].includes(rowLetter);
-                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-                    // Sala 3: rzędy I-J to kanapy (po 8 rzędach foteli A-H)
+                  } else if (hallType === 'mixed') {
+                    // Sala mixed: rzędy I-J to kanapy
                     isCouch = ['I', 'J'].includes(rowLetter);
                   } else {
                     // Standardowy układ: ostatnie 2 rzędy to kanapy (dla sali 1, 2 i innych)
@@ -497,79 +516,28 @@ export default function Reservation() {
           </div>
           {selectedSeats.length > 0 && (
             <>
-              {(() => {
-                // Funkcja pomocnicza do określania czy miejsce to kanapa
-                const isSeatCouch = (seat) => {
-                  const rowLetter = seat[0];
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: rzędy F-G to kanapy VIP
-                    return ['F', 'G'].includes(rowLetter);
-                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-                    return ['I', 'J'].includes(rowLetter);
-                  } else {
-                    // Standardowy układ: ostatnie 2 rzędy to kanapy
-                    const rowNumber = rowLetter.charCodeAt(0) - 65;
-                    const totalRows = Object.keys(seatsByRow).length;
-                    return rowNumber >= totalRows - 2;
-                  }
-                };
-                
-                const couchSeats = selectedSeats.filter(isSeatCouch);
-                const normalSeats = selectedSeats.filter(s => !isSeatCouch(s));
-                
-                return (
-                  <>
-                    {couchSeats.length > 0 && (
-                      <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
-                        <span>{hallType === 'vip' ? 'Kanapy VIP (70 zł):' : 'Kanapy (2x cena):'}</span>
-                        <span>
-                          {couchSeats.length} × {hallType === 'vip' ? '70.00' : (parseFloat(session.price) * 2).toFixed(2)} zł
-                        </span>
-                      </div>
-                    )}
-                    {normalSeats.length > 0 && (
-                      <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
-                        <span>{hallType === 'vip' ? 'Fotele VIP (35 zł):' : 'Zwykłe miejsca:'}</span>
-                        <span>
-                          {normalSeats.length} × {hallType === 'vip' ? '35.00' : parseFloat(session.price).toFixed(2)} zł
-                        </span>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              {priceInfo.couchSeats.length > 0 && (
+                <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
+                  <span>Kanapy (2x cena):</span>
+                  <span>
+                    {priceInfo.couchSeats.length} × {priceInfo.couchPrice.toFixed(2)} zł
+                  </span>
+                </div>
+              )}
+              {priceInfo.normalSeats.length > 0 && (
+                <div className="price-row" style={{ fontSize: '0.9em', opacity: 0.8 }}>
+                  <span>Zwykłe miejsca:</span>
+                  <span>
+                    {priceInfo.normalSeats.length} × {priceInfo.normalPrice.toFixed(2)} zł
+                  </span>
+                </div>
+              )}
             </>
           )}
           <div className="price-total">
             <span>Razem:</span>
             <strong style={{ fontSize: '1.5em', color: 'var(--primary)' }}>
-              {(() => {
-                const isSeatCouch = (seat) => {
-                  const rowLetter = seat[0];
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: rzędy F-G to kanapy VIP
-                    return ['F', 'G'].includes(rowLetter);
-                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-                    return ['I', 'J'].includes(rowLetter);
-                  } else {
-                    // Standardowy układ: ostatnie 2 rzędy to kanapy
-                    const rowNumber = rowLetter.charCodeAt(0) - 65;
-                    const totalRows = Object.keys(seatsByRow).length;
-                    return rowNumber >= totalRows - 2;
-                  }
-                };
-                
-                const totalPrice = selectedSeats.reduce((sum, seat) => {
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: fotele VIP = 35 zł, kanapy VIP = 70 zł
-                    return sum + (isSeatCouch(seat) ? 70 : 35);
-                  } else {
-                    const isCouch = isSeatCouch(seat);
-                    return sum + (isCouch ? parseFloat(session.price) * 2 : parseFloat(session.price));
-                  }
-                }, 0);
-                return totalPrice.toFixed(2);
-              })()} zł
+              {priceInfo.total.toFixed(2)} zł
             </strong>
           </div>
         </div>
@@ -599,33 +567,7 @@ export default function Reservation() {
             <h3 style={{ fontSize: '1.1em', marginBottom: '10px' }}>Płatność</h3>
             <PaymentForm
               clientSecret={clientSecret}
-              amountPln={(() => {
-                const isSeatCouch = (seat) => {
-                  const rowLetter = seat[0];
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: rzędy F-G to kanapy VIP
-                    return ['F', 'G'].includes(rowLetter);
-                  } else if (hallType === 'mixed' && hallName.includes('Sala 3')) {
-                    return ['I', 'J'].includes(rowLetter);
-                  } else {
-                    // Standardowy układ: ostatnie 2 rzędy to kanapy
-                    const rowNumber = rowLetter.charCodeAt(0) - 65;
-                    const totalRows = Object.keys(seatsByRow).length;
-                    return rowNumber >= totalRows - 2;
-                  }
-                };
-                
-                const totalPrice = selectedSeats.reduce((sum, seat) => {
-                  if (hallType === 'vip' && hallName.includes('Sala 4')) {
-                    // Sala 4 VIP: fotele VIP = 35 zł, kanapy VIP = 70 zł
-                    return sum + (isSeatCouch(seat) ? 70 : 35);
-                  } else {
-                    const isCouch = isSeatCouch(seat);
-                    return sum + (isCouch ? parseFloat(session.price) * 2 : parseFloat(session.price));
-                  }
-                }, 0);
-                return totalPrice;
-              })()}
+              amountPln={priceInfo.total}
               onSuccess={() => {
                 showToast('success', 'Płatność zakończona!')
                 navigate('/dashboard')

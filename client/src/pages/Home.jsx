@@ -39,13 +39,24 @@ export default function Home() {
   const filteredSessions = sessions.filter(s => {
     // Sprawdź czy session i datetime istnieją
     if (!s || !s.datetime) return false;
-    
+
     try {
       const sessionDate = new Date(s.datetime);
+      const now = new Date();
+
       // Sprawdź czy data jest poprawna
       if (isNaN(sessionDate.getTime())) return false;
-      
-      return sessionDate.toDateString() === selectedDate.toDateString();
+
+      // Filtruj tylko seanse z wybranego dnia
+      if (sessionDate.toDateString() !== selectedDate.toDateString()) return false;
+
+      // Jeśli wybrany dzień to dzisiaj, pokaż tylko przyszłe seanse
+      if (selectedDate.toDateString() === now.toDateString()) {
+        return sessionDate > now;
+      }
+
+      // Dla przyszłych dni pokaż wszystkie seanse
+      return true;
     } catch (error) {
       console.error('Error filtering session:', error, s);
       return false;

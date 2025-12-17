@@ -43,16 +43,34 @@ export default function Cennik() {
       .map((s) => (typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(",", "."))));
   }, [upcoming]);
 
+  const pricesVIP = useMemo(() => {
+    return upcoming
+      .filter((s) => {
+        const hallName = (s.hall_name || '').toLowerCase();
+        const hallDesc = (s.hall_description || '').toLowerCase();
+        return hallName.includes('vip') || hallDesc.includes('vip');
+      })
+      .map((s) => (typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(",", "."))));
+  }, [upcoming]);
+
   const prices = [
     {
       type: "Bilety 2D",
       price: priceRangeLabel(prices2D),
-      description: "Cena zależy od konkretnego seansu (ustawiana przez administratora).",
+      description: "Cena zależy od konkretnego seansu.",
+      isVip: false
     },
     {
       type: "Bilety 3D",
       price: priceRangeLabel(prices3D),
-      description: "Cena zależy od konkretnego seansu (ustawiana przez administratora).",
+      description: "Cena zależy od konkretnego seansu.",
+      isVip: false
+    },
+    {
+      type: " Bilety VIP ",
+      price: priceRangeLabel(pricesVIP),
+      description: "Ekskluzywna sala z fotelami i kanapami VIP.",
+      isVip: true
     },
   ];
 
@@ -60,11 +78,17 @@ export default function Cennik() {
     <>
       <div className="grid">
         {prices.map((p, i) => (
-          <div key={i} className="card" style={{ 
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: 'transparent'
-          }}>
-            <h3>{p.type}</h3>
+          <div
+            key={i}
+            className={`card ${p.isVip ? 'vip-card' : ''}`}
+            style={{
+              border: p.isVip ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+              background: p.isVip ? 'rgba(255, 215, 0, 0.05)' : 'transparent',
+              position: 'relative',
+              boxShadow: p.isVip ? '0 0 20px rgba(255, 215, 0, 0.3)' : 'none'
+            }}
+          >
+            <h3 style={{ color: p.isVip ? 'var(--primary)' : 'inherit' }}>{p.type}</h3>
             <p style={{ fontSize: '1.3em', margin: '10px 0', color: 'var(--primary)' }}><b>{p.price}</b></p>
             {p.description && <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '8px' }}>{p.description}</p>}
           </div>

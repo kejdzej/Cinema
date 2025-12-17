@@ -28,10 +28,9 @@ CREATE TABLE `users` (
   `email` varchar(150) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `role` enum('user','admin') DEFAULT 'user',
+  `role` enum('user','employee','admin') DEFAULT 'user',
   `points` int NOT NULL DEFAULT '0',
   `loyalty_code` varchar(100) DEFAULT NULL,
-  `loyalty_points` int DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `loyalty_code` (`loyalty_code`)
@@ -44,7 +43,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Yuliia','kzlv005@gmail.com','$2a$10$73ZzWYtLWM74JH5hH65RvOivbjDJfXceBWgaZ6GOkjirwrs4.8rHy','2025-10-02 10:50:03','user',4200,'TEST1234',1000),(2,'t1','t1@gamil.com','$2a$10$JiRJMikFAKsU7HLh33Ow.u.Q9TjEljemT59LF4RN4Eqza/rPQY.GS','2025-10-30 12:19:06','user',0,NULL,0),(3,'admin','admin@cinema.pl','$2a$10$Y3R4W3/FvBX/QrOMHHBH8.8M./y1b6KRFThHLG.IcRHeTHR85o3hK','2025-11-12 20:55:38','admin',0,NULL,0),(4,'t2','t2@mail.com','$2a$10$wToR.i0Rfldn5LB4oh4An..jrjEZfbkivIVPNi1ockz0/AfpR0ubO','2025-11-21 10:16:09','user',0,NULL,0);
+INSERT INTO `users` VALUES (1,'Yuliia','kzlv005@gmail.com','$2a$10$73ZzWYtLWM74JH5hH65RvOivbjDJfXceBWgaZ6GOkjirwrs4.8rHy','2025-10-02 10:50:03','user',4200,'TEST1234'),(2,'t1','t1@gamil.com','$2a$10$JiRJMikFAKsU7HLh33Ow.u.Q9TjEljemT59LF4RN4Eqza/rPQY.GS','2025-10-30 12:19:06','user',0,NULL),(3,'admin','admin@cinema.pl','$2a$10$Y3R4W3/FvBX/QrOMHHBH8.8M./y1b6KRFThHLG.IcRHeTHR85o3hK','2025-11-12 20:55:38','admin',0,NULL),(4,'t2','t2@mail.com','$2a$10$wToR.i0Rfldn5LB4oh4An..jrjEZfbkivIVPNi1ockz0/AfpR0ubO','2025-11-21 10:16:09','user',0,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
