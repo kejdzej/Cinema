@@ -28,6 +28,12 @@ CREATE TABLE `movies` (
   `description` text,
   `duration` int NOT NULL DEFAULT '120',
   `poster` varchar(255) DEFAULT NULL,
+  `trailer_url` varchar(255) DEFAULT NULL,
+  `genre` varchar(100) DEFAULT NULL,
+  `director` varchar(200) DEFAULT NULL,
+  `cast` text,
+  `imdb_id` varchar(20) DEFAULT NULL,
+  `release_year` int DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -38,7 +44,14 @@ CREATE TABLE `movies` (
 
 LOCK TABLES `movies` WRITE;
 /*!40000 ALTER TABLE `movies` DISABLE KEYS */;
-INSERT INTO `movies` VALUES (1,'Interstellar','Epicka opowieść o ratowaniu ludzkości poprzez podróże kosmiczne',169,'/posters/interstellar.jpeg'),(2,'The Matrix','Rewolucyjny film science-fiction o rzeczywistości i symulacji',136,'/posters/matrix.jpg'),(3,'Gladiator','Historyczna epopeja o upadłym rzymskim generale',155,'/posters/gladiator.jpg'),(4,'Lilo & Stitch','Animowana opowieść o przyjaźni między małą dziewczynką a kosmicznym stworzeniem.',85,'/posters/lilo-stitch.jpg'),(6,'Barbie','Współczesna komedia przygodowa o Barbie odkrywającej swoje miejsce w świecie.',114,'/posters/barbie.jpg'),(7,'Venom','Historia dziennikarza Eddiego Brocka, który staje się gospodarzem dla obcego symbionta.',112,'/posters/venom.jpg'),(8,'Aladin','Klasyczna bajka Disneya o magicznej lampie i zaczarowanym świecie.',90,'/posters/aladdin.jpg');
+INSERT INTO `movies` VALUES
+(1,'Interstellar','Epicka opowieść o ratowaniu ludzkości poprzez podróże kosmiczne',169,'/posters/interstellar.jpeg','https://www.youtube.com/watch?v=zSWdZVtXT7E','Sci-Fi, Drama','Christopher Nolan',NULL,'tt0816692',2014),
+(2,'The Matrix','Rewolucyjny film science-fiction o rzeczywistości i symulacji',136,'/posters/matrix.jpg','https://www.youtube.com/watch?v=vKQi3bBA1y8','Sci-Fi, Action','Lana Wachowski, Lilly Wachowski',NULL,'tt0133093',1999),
+(3,'Gladiator','Historyczna epopeja o upadłym rzymskim generale',155,'/posters/gladiator.jpg','https://www.youtube.com/watch?v=owK1qxDselE','Action, Drama','Ridley Scott',NULL,'tt0172495',2000),
+(4,'Lilo & Stitch','Animowana opowieść o przyjaźni między małą dziewczynką a kosmicznym stworzeniem.',85,'/posters/lilo-stitch.jpg','https://www.youtube.com/watch?v=VWqJifMMgZE','Animation, Family','Dean DeBlois, Chris Sanders',NULL,'tt0275847',2002),
+(6,'Barbie','Współczesna komedia przygodowa o Barbie odkrywającej swoje miejsce w świecie.',114,'/posters/barbie.jpg','https://www.youtube.com/watch?v=pBk4NYhWNMM','Comedy, Fantasy','Greta Gerwig',NULL,'tt1517268',2023),
+(7,'Venom','Historia dziennikarza Eddiego Brocka, który staje się gospodarzem dla obcego symbionta.',112,'/posters/venom.jpg','https://www.youtube.com/watch?v=u9Mv98Gr5pY','Action, Sci-Fi','Ruben Fleischer',NULL,'tt1270797',2018),
+(8,'Aladdin','Klasyczna bajka Disneya o magicznej lampie i zaczarowanym świecie.',90,'/posters/aladdin.jpg','https://www.youtube.com/watch?v=G7EZ8bCj7jA','Animation, Family','Ron Clements, John Musker',NULL,'tt0103639',1992);
 /*!40000 ALTER TABLE `movies` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

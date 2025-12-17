@@ -80,6 +80,7 @@ export default function Navbar() {
         {isHomePage && (
           <>
             <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
+            <Link to="/movies">Filmy</Link>
             <span onClick={() => scrollToSection('popcorn')} style={{cursor: 'pointer'}}>Popcorn Bar</span>
             <span onClick={() => scrollToSection('cennik')} style={{cursor: 'pointer'}}>Cennik</span>
             <span onClick={() => scrollToSection('aktualnosci')} style={{cursor: 'pointer'}}>Aktualności</span>
@@ -88,7 +89,10 @@ export default function Navbar() {
         
         {/* Na innych stronach (oprócz admin) pokaż link do strony głównej */}
         {!isHomePage && !isAdminPanel && (
-          <Link to="/">Strona główna</Link>
+          <>
+            <Link to="/">Strona główna</Link>
+            <Link to="/movies">Filmy</Link>
+          </>
         )}
         
         {/* W panelu admin przycisk powrotu */}
