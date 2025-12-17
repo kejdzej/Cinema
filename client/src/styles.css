@@ -930,57 +930,118 @@ border: 1px solid var(--primary);
   transform: scale(1.05);
 }
 
-/* slider*/ 
-@import "slick-carousel/slick/slick.css";
-@import "slick-carousel/slick/slick-theme.css";
+/* slider */
+/* NOTE: slick-carousel CSS is imported in `components/Slider.jsx`.
+   Keeping @import here breaks Vite because @import must be at the top. */
 
 .slider-container {
   width: 100%;
-  max-height: 500px;
+  margin-bottom: 40px;
+}
+
+.hero-slide {
+  padding: 14px;
+}
+
+.hero-slide-inner {
   position: relative;
+  display: flex;
+  align-items: stretch;
+  min-height: 420px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
 }
 
-.slide {
-  position: relative;
-}
-
-.slide-img {
-  width: 100%;
-  height: 500px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.slide-overlay {
+.hero-slide-bg {
   position: absolute;
-  bottom: 30px;
-  left: 50px;
-  color: white;
-  background: rgba(0,0,0,0.5);
-  padding: 20px;
-  border-radius: 8px;
+  inset: 0;
+  z-index: 0;
 }
 
-.slide-overlay h2 {
-  font-size: 2rem;
+.hero-slide-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scale(1.02);
+}
+
+/* left-to-right darkening for text panel readability */
+.hero-slide-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(11, 15, 25, 0.86) 0%,
+    rgba(11, 15, 25, 0.74) 26%,
+    rgba(11, 15, 25, 0.30) 55%,
+    rgba(11, 15, 25, 0.12) 72%,
+    rgba(11, 15, 25, 0.05) 100%
+  );
+}
+
+.hero-slide-left {
+  position: relative;
+  z-index: 2;
+  width: min(520px, 46%);
+  padding: 26px 26px 26px 26px;
+}
+
+.hero-slide-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+
+.hero-slide-left h2 {
   margin: 0 0 10px;
+  font-size: 2.1rem;
+  line-height: 1.15;
+  color: var(--text);
 }
 
-.slide-overlay p {
-  margin: 0 0 15px;
-  font-size: 1.1rem;
+.hero-slide-left p {
+  margin: 0 0 16px;
+  max-width: 52ch;
+  line-height: 1.7;
+  color: rgba(230, 232, 239, 0.86);
+  font-size: 1.05rem;
 }
 
-.slide-overlay .btn {
-  padding: 10px 20px;
-  background: #facc15;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
+.hero-slide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
-.slide-overlay .btn:hover {
-  background: #eab308;
+
+@media (max-width: 860px) {
+  .hero-slide-inner {
+    min-height: 360px;
+  }
+  .hero-slide-left {
+    width: 100%;
+  }
+  .hero-slide-inner::before {
+    background: linear-gradient(
+      180deg,
+      rgba(11, 15, 25, 0.82) 0%,
+      rgba(11, 15, 25, 0.66) 35%,
+      rgba(11, 15, 25, 0.25) 70%,
+      rgba(11, 15, 25, 0.10) 100%
+    );
+  }
 }
 
 

@@ -38,7 +38,7 @@ export default function SliderHero() {
       title: "Super oferta Popcorn Bar",
       desc: "Tylko teraz! Duży popcorn + napój w promocyjnej cenie.",
       img: "/posters/popcorn.jpg",
-      button: "Sprawdź ofertę",
+      button: "Odbierz",
       type: 'promotion',
       link: '#popcorn'
     },
@@ -47,7 +47,7 @@ export default function SliderHero() {
       title: "Program lojalnościowy",
       desc: "Zbieraj punkty i wymieniaj je na nagrody!",
       img: "/posters/zestaw.jpg",
-      button: "Dowiedz się więcej",
+      button: "Odbierz",
       type: 'promotion',
       link: '/rewards',
       useGradient: false
@@ -115,52 +115,37 @@ export default function SliderHero() {
   };
 
   return (
-    <div className="slider-container" style={{ marginBottom: '40px' }}>
+    <div className="slider-container">
       <Slider {...settings}>
         {allSlides.map((s, i) => (
-          <div key={s.id || i} className="slide">
-            {s.useGradient ? (
-              // Gradient dla promocji
-              <div 
-                className="slide-img"
-                style={{
-                  background: s.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '4em'
-                }}
-              >
-                {s.id === 'vip-promo' && '⭐'}
-              </div>
-            ) : (
-              <img 
-                src={s.img} 
-                alt={s.title} 
-                className="slide-img"
-                onError={(e) => {
-                  // Fallback do gradientu jeśli obraz nie istnieje
-                  if (s.type === 'promotion' && s.id === 'loyalty-promo') {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)';
-                  } else {
+          <div key={s.id || i} className="hero-slide">
+            <div className="hero-slide-inner">
+              <div className="hero-slide-bg" aria-hidden="true">
+                <img
+                  src={s.img}
+                  alt=""
+                  onError={(e) => {
                     e.target.src = '/posters/default.jpg';
-                  }
-                }}
-              />
-            )}
-            <div className="slide-overlay">
-              <h2>{s.title}</h2>
-              <p>{s.desc}</p>
-              <button 
-                className="btn" 
-                onClick={() => handleSlideClick(s)}
-              >
-                {s.button}
-              </button>
+                  }}
+                />
+              </div>
+              <div className="hero-slide-left">
+                <div className="hero-slide-kicker">
+                  {s.type === 'promotion' ? 'Oferta / Akcja' : 'Film'}
+                </div>
+                <h2>{s.title}</h2>
+                <p>{s.desc}</p>
+                <div className="hero-slide-actions">
+                  <button className="btn" onClick={() => handleSlideClick(s)}>
+                    {s.button}
+                  </button>
+                  {s.type === 'movie' && !s.sessionId && (
+                    <button className="btn btn-ghost" onClick={() => navigate('/#repertuar')}>
+                      Repertuar
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ))}

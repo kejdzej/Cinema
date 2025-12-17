@@ -1,41 +1,74 @@
-// Cennik.jsx
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../services/api.js";
+
+function priceRangeLabel(prices) {
+  if (!prices.length) return "—";
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return "—";
+  if (min === max) return `${min.toFixed(2)} zł`;
+  return `${min.toFixed(2)}–${max.toFixed(2)} zł`;
+}
+
 export default function Cennik() {
+  const [sessions, setSessions] = useState([]);
+
+  useEffect(() => {
+    api.get("/sessions")
+      .then((res) => setSessions(res.data || []))
+      .catch(() => setSessions([]));
+  }, []);
+
+  const upcoming = useMemo(() => {
+    const now = new Date();
+    return (sessions || []).filter((s) => {
+      if (!s || s.price === null || s.price === undefined) return false;
+      const dt = new Date(s.datetime);
+      if (Number.isNaN(dt.getTime())) return false;
+      if (dt < now) return false;
+      const p = typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(",", "."));
+      return Number.isFinite(p) && p > 0;
+    });
+  }, [sessions]);
+
+  const prices2D = useMemo(() => {
+    return upcoming
+      .filter((s) => !s.format || s.format === "2D")
+      .map((s) => (typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(",", "."))));
+  }, [upcoming]);
+
+  const prices3D = useMemo(() => {
+    return upcoming
+      .filter((s) => s.format === "3D")
+      .map((s) => (typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(",", "."))));
+  }, [upcoming]);
+
   const prices = [
-    { type: "Bilet ulgowy (uczniowie/studenci)", price: "18 zł", description: "Wymagana ważna legitymacja" },
-    { type: "Bilet normalny 2D", price: "22 zł", description: "Standardowy bilet na seans 2D" },
-    { type: "Bilet 3D", price: "28 zł", description: "Seans w technologii 3D" },
-    { type: "Kanapa (2 miejsca)", price: "2x cena biletu", description: "Podwójne miejsce dla dwóch osób" },
-    { type: "Fotel VIP", price: "35 zł", description: "Sala VIP - fotele z regulacją elektryczną" },
-    { type: "Kanapa VIP (2 miejsca)", price: "70 zł", description: "Sala VIP - podwójne miejsce VIP" },
-  ]
+    {
+      type: "Bilety 2D",
+      price: priceRangeLabel(prices2D),
+      description: "Cena zależy od konkretnego seansu (ustawiana przez administratora).",
+    },
+    {
+      type: "Bilety 3D",
+      price: priceRangeLabel(prices3D),
+      description: "Cena zależy od konkretnego seansu (ustawiana przez administratora).",
+    },
+  ];
 
   return (
     <>
       <div className="grid">
         {prices.map((p, i) => (
           <div key={i} className="card" style={{ 
-            border: p.type.includes('VIP') ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
-            background: p.type.includes('VIP') ? 'rgba(250, 204, 21, 0.1)' : 'transparent'
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'transparent'
           }}>
             <h3>{p.type}</h3>
             <p style={{ fontSize: '1.3em', margin: '10px 0', color: 'var(--primary)' }}><b>{p.price}</b></p>
             {p.description && <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '8px' }}>{p.description}</p>}
           </div>
         ))}
-      </div>
-      
-      {/* Wzmianka o sali VIP */}
-      <div style={{
-        marginTop: '30px',
-        padding: '20px',
-        background: 'rgba(250, 204, 21, 0.1)',
-        border: '1px solid var(--primary)',
-        borderRadius: '10px',
-        textAlign: 'center'
-      }}>
-        <p style={{ fontSize: '1.1em', margin: 0, color: 'var(--primary)' }}>
-          <strong>⭐ Sala VIP:</strong> Fotele z regulacją elektryczną i więcej miejsca na nogi dla maksymalnego komfortu
-        </p>
       </div>
     </>
   )

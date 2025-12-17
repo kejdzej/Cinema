@@ -7,6 +7,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('movies');
   const [movies, setMovies] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [news, setNews] = useState([]);
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [tickets, setTickets] = useState([]);
@@ -31,7 +32,9 @@ export default function AdminDashboard() {
     hall_id: '',
     format: '2D',
     name: '',
-    capacity: ''
+    capacity: '',
+    published_at: '',
+    highlight: false
   });
 
   // Załaduj wszystkie dane na początku (dla kafelków statystyk)
@@ -44,14 +47,16 @@ export default function AdminDashboard() {
         api.get('/admin/tickets').catch(() => ({ data: [] })),
         api.get('/admin/users').catch(() => ({ data: [] })),
         api.get('/admin/halls').catch(() => ({ data: [] })),
-        api.get('/admin/orders').catch(() => ({ data: [] }))
-      ]).then(([moviesRes, sessionsRes, ticketsRes, usersRes, hallsRes, ordersRes]) => {
+        api.get('/admin/orders').catch(() => ({ data: [] })),
+        api.get('/admin/news').catch(() => ({ data: [] }))
+      ]).then(([moviesRes, sessionsRes, ticketsRes, usersRes, hallsRes, ordersRes, newsRes]) => {
         setMovies(moviesRes.data || []);
         setSessions(sessionsRes.data || []);
         setTickets(ticketsRes.data || []);
         setUsers(usersRes.data || []);
         setHalls(hallsRes.data || []);
         setOrders(ordersRes.data || []);
+        setNews(newsRes.data || []);
       });
     }
   }, [user]);
@@ -92,6 +97,10 @@ export default function AdminDashboard() {
         case 'sessions':
           const sessionsRes = await api.get('/admin/sessions');
           setSessions(sessionsRes.data);
+          break;
+        case 'news':
+          const newsRes = await api.get('/admin/news');
+          setNews(newsRes.data);
           break;
         case 'users':
           const usersRes = await api.get('/admin/users');
@@ -216,6 +225,32 @@ export default function AdminDashboard() {
           name: item.name || '',
           capacity: item.capacity || ''
         });
+      } else if (type === 'news') {
+        setFormData({
+          title: item.title || '',
+          description: item.body || '',
+          duration: '',
+          poster: '',
+          movie_id: '',
+          datetime: '',
+          price: '',
+          hall_id: '',
+          format: '2D',
+          name: '',
+          capacity: '',
+          published_at: item.published_at
+            ? (() => {
+                try {
+                  const d = new Date(item.published_at);
+                  if (isNaN(d.getTime())) return '';
+                  return d.toISOString().slice(0, 10);
+                } catch {
+                  return '';
+                }
+              })()
+            : '',
+          highlight: !!item.highlight
+        });
       }
     } else {
       // Dodawanie - pusty formularz
@@ -228,8 +263,11 @@ export default function AdminDashboard() {
         datetime: '',
         price: '',
         hall_id: '',
+        format: '2D',
         name: '',
-        capacity: ''
+        capacity: '',
+        published_at: '',
+        highlight: false
       });
     }
     setShowModal(true);
@@ -251,7 +289,9 @@ export default function AdminDashboard() {
       hall_id: '',
       format: '2D',
       name: '',
-      capacity: ''
+      capacity: '',
+      published_at: '',
+      highlight: false
     });
   };
 
@@ -441,6 +481,22 @@ export default function AdminDashboard() {
           showToast('success', 'Sala dodana');
         }
         loadData('halls');
+      } else if (modalType === 'news') {
+        const payload = {
+          title: formData.title,
+          body: formData.description,
+          highlight: !!formData.highlight,
+          published_at: formData.published_at ? formData.published_at : null
+        };
+
+        if (editingItem) {
+          await api.put(`/admin/news/${editingItem.id}`, payload);
+          showToast('success', 'Aktualność zaktualizowana');
+        } else {
+          await api.post('/admin/news', payload);
+          showToast('success', 'Aktualność dodana');
+        }
+        loadData('news');
       }
       closeModal();
     } catch (error) {
@@ -500,7 +556,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="admin-tabs">
-        {['movies', 'sessions', 'halls', 'users', 'orders', 'tickets', 'reports'].map(tab => (
+        {['movies', 'sessions', 'news', 'halls', 'users', 'orders', 'tickets', 'reports'].map(tab => (
           <button
             key={tab}
             className={`btn ${activeTab === tab ? '' : 'btn-ghost'}`}
@@ -508,6 +564,7 @@ export default function AdminDashboard() {
           >
             {tab === 'movies' && '🎬 Filmy'}
             {tab === 'sessions' && '📅 Seanse'}
+            {tab === 'news' && '📰 Aktualności'}
             {tab === 'halls' && '🎭 Sale'}
             {tab === 'users' && '👥 Użytkownicy'}
             {tab === 'orders' && '🛒 Zamówienia'}
@@ -585,6 +642,52 @@ export default function AdminDashboard() {
                       <button
                         className="btn-danger"
                         onClick={() => deleteItem('sessions', session.id, 'seans')}
+                      >
+                        Usuń
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* AKTUALNOŚCI */}
+      {activeTab === 'news' && (
+        <div className="admin-section">
+          <div className="section-header">
+            <h2>📰 Zarządzanie aktualnościami</h2>
+            <button className="btn" onClick={() => openModal('news')}>
+              + Dodaj aktualność
+            </button>
+          </div>
+          <div className="table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Tytuł</th>
+                  <th>Data</th>
+                  <th>Wyróżniona</th>
+                  <th>Akcje</th>
+                </tr>
+              </thead>
+              <tbody>
+                {news.map((n) => (
+                  <tr key={n.id}>
+                    <td>{n.title}</td>
+                    <td>
+                      {new Date(n.published_at || n.created_at).toLocaleDateString('pl-PL')}
+                    </td>
+                    <td>{n.highlight ? 'Tak' : 'Nie'}</td>
+                    <td>
+                      <button className="btn btn-ghost" onClick={() => openModal('news', n)}>
+                        Edytuj
+                      </button>
+                      <button
+                        className="btn-danger"
+                        onClick={() => deleteItem('news', n.id, n.title)}
                       >
                         Usuń
                       </button>
@@ -891,7 +994,8 @@ export default function AdminDashboard() {
                 {editingItem ? 'Edytuj' : 'Dodaj'} {
                   modalType === 'movie' ? 'film' : 
                   modalType === 'session' ? 'seans' : 
-                  modalType === 'hall' ? 'salę' : ''
+                  modalType === 'hall' ? 'salę' :
+                  modalType === 'news' ? 'aktualność' : ''
                 }
               </h3>
               <button className="modal-close" onClick={closeModal}>×</button>
@@ -933,6 +1037,47 @@ export default function AdminDashboard() {
                       value={formData.poster}
                       onChange={(e) => setFormData({...formData, poster: e.target.value})}
                     />
+                  </div>
+                </>
+              )}
+
+              {modalType === 'news' && (
+                <>
+                  <div className="form-group">
+                    <label>Tytuł:</label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Treść:</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows="5"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Data publikacji:</label>
+                    <input
+                      type="date"
+                      value={formData.published_at}
+                      onChange={(e) => setFormData({ ...formData, published_at: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!formData.highlight}
+                        onChange={(e) => setFormData({ ...formData, highlight: e.target.checked })}
+                      />
+                      Wyróżnij (podświetl)
+                    </label>
                   </div>
                 </>
               )}
