@@ -13,6 +13,24 @@ export default function Register(){
 
   const onSubmit = async (e)=>{
     e.preventDefault()
+
+    // Walidacja po stronie klienta
+    if (!name.trim()) {
+      showToast('error', 'Imię jest wymagane')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      showToast('error', 'Nieprawidłowy format email')
+      return
+    }
+
+    if (password.length < 6) {
+      showToast('error', 'Hasło musi mieć minimum 6 znaków')
+      return
+    }
+
     setLoading(true)
     try {
       await api.post('/auth/register', { name, email, password })

@@ -26,6 +26,12 @@ export default function AdminDashboard() {
     description: '',
     duration: '',
     poster: '',
+    trailer_url: '',
+    genre: '',
+    director: '',
+    cast: '',
+    imdb_id: '',
+    release_year: '',
     movie_id: '',
     datetime: '',
     price: '',
@@ -188,9 +194,21 @@ export default function AdminDashboard() {
           description: item.description || '',
           duration: item.duration || '',
           poster: item.poster || '',
+          trailer_url: item.trailer_url || '',
+          genre: item.genre || '',
+          director: item.director || '',
+          cast: item.cast || '',
+          imdb_id: item.imdb_id || '',
+          release_year: item.release_year || '',
           movie_id: '',
           datetime: '',
-          price: ''
+          price: '',
+          hall_id: '',
+          format: '2D',
+          name: '',
+          capacity: '',
+          published_at: '',
+          highlight: false
         });
       } else if (type === 'session') {
         setFormData({
@@ -198,32 +216,51 @@ export default function AdminDashboard() {
           description: '',
           duration: '',
           poster: '',
-        movie_id: item.movie_id || '',
-        datetime: item.datetime ? (() => {
-          try {
-            const date = new Date(item.datetime);
-            if (isNaN(date.getTime())) return '';
-            return date.toISOString().slice(0, 16);
-          } catch {
-            return '';
-          }
-        })() : '',
-        price: item.price ? String(item.price).replace(',', '.') : '',
-        hall_id: item.hall_id || '',
-        format: item.format || '2D'
+          trailer_url: '',
+          genre: '',
+          director: '',
+          cast: '',
+          imdb_id: '',
+          release_year: '',
+          movie_id: item.movie_id || '',
+          datetime: item.datetime ? (() => {
+            try {
+              const date = new Date(item.datetime);
+              if (isNaN(date.getTime())) return '';
+              return date.toISOString().slice(0, 16);
+            } catch {
+              return '';
+            }
+          })() : '',
+          price: item.price ? String(item.price).replace(',', '.') : '',
+          hall_id: item.hall_id || '',
+          format: item.format || '2D',
+          name: '',
+          capacity: '',
+          published_at: '',
+          highlight: false
         });
       } else if (type === 'hall') {
         setFormData({
           title: '',
-          description: '',
+          description: item.description || '',
           duration: '',
           poster: '',
+          trailer_url: '',
+          genre: '',
+          director: '',
+          cast: '',
+          imdb_id: '',
+          release_year: '',
           movie_id: '',
           datetime: '',
           price: '',
           hall_id: '',
+          format: '2D',
           name: item.name || '',
-          capacity: item.capacity || ''
+          capacity: item.capacity || '',
+          published_at: '',
+          highlight: false
         });
       } else if (type === 'news') {
         setFormData({
@@ -231,6 +268,12 @@ export default function AdminDashboard() {
           description: item.body || '',
           duration: '',
           poster: '',
+          trailer_url: '',
+          genre: '',
+          director: '',
+          cast: '',
+          imdb_id: '',
+          release_year: '',
           movie_id: '',
           datetime: '',
           price: '',
@@ -259,6 +302,12 @@ export default function AdminDashboard() {
         description: '',
         duration: '',
         poster: '',
+        trailer_url: '',
+        genre: '',
+        director: '',
+        cast: '',
+        imdb_id: '',
+        release_year: '',
         movie_id: '',
         datetime: '',
         price: '',
@@ -277,12 +326,18 @@ export default function AdminDashboard() {
     setShowModal(false);
     setEditingItem(null);
     setModalType('');
-      // Reset form data
+    // Reset form data
     setFormData({
       title: '',
       description: '',
       duration: '',
       poster: '',
+      trailer_url: '',
+      genre: '',
+      director: '',
+      cast: '',
+      imdb_id: '',
+      release_year: '',
       movie_id: '',
       datetime: '',
       price: '',
@@ -298,6 +353,8 @@ export default function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    console.log('[HANDLE SUBMIT] Start:', { modalType, editingItem: editingItem?.id, formData });
+
     try {
       if (modalType === 'movie') {
         if (editingItem) {
@@ -306,7 +363,13 @@ export default function AdminDashboard() {
             title: formData.title,
             description: formData.description,
             duration: parseInt(formData.duration),
-            poster: formData.poster
+            poster: formData.poster,
+            trailer_url: formData.trailer_url,
+            genre: formData.genre,
+            director: formData.director,
+            cast: formData.cast,
+            imdb_id: formData.imdb_id,
+            release_year: formData.release_year ? parseInt(formData.release_year) : null
           });
           showToast('success', 'Film zaktualizowany');
         } else {
@@ -315,7 +378,13 @@ export default function AdminDashboard() {
             title: formData.title,
             description: formData.description,
             duration: parseInt(formData.duration),
-            poster: formData.poster
+            poster: formData.poster,
+            trailer_url: formData.trailer_url,
+            genre: formData.genre,
+            director: formData.director,
+            cast: formData.cast,
+            imdb_id: formData.imdb_id,
+            release_year: formData.release_year ? parseInt(formData.release_year) : null
           });
           showToast('success', 'Film dodany');
         }
@@ -323,18 +392,40 @@ export default function AdminDashboard() {
       } else if (modalType === 'session') {
         if (editingItem) {
           // Edycja seansu
-          // Walidacja hall_id - sprawdź czy to poprawna liczba
-          const hallId = formData.hall_id && formData.hall_id.trim() !== '' 
-            ? parseInt(formData.hall_id) 
-            : null;
+          console.log('=== EDYCJA SEANSU - START ===');
+          console.log('formData:', formData);
+          console.log('editingItem:', editingItem);
+          console.log('editingItem.id:', editingItem.id);
           
+          // Sprawdź czy ID istnieje
+          if (!editingItem.id) {
+            console.error('[FRONTEND] BŁĄD: Brak ID seansu w editingItem');
+            showToast('error', 'Błąd: Brak ID seansu. Odśwież stronę i spróbuj ponownie.');
+            return;
+          }
+
+          // Walidacja movie_id
+          if (!formData.movie_id || formData.movie_id === '') {
+            console.error('BŁĄD: Brak movie_id');
+            showToast('error', 'Film jest wymagany');
+            return;
+          }
+
+          // Walidacja hall_id - sprawdź czy to poprawna liczba
+          const hallIdStr = formData.hall_id ? String(formData.hall_id).trim() : '';
+          const hallId = hallIdStr !== ''
+            ? parseInt(hallIdStr)
+            : null;
+
           if (hallId !== null && isNaN(hallId)) {
+            console.error('BŁĄD: Nieprawidłowy hall_id:', formData.hall_id);
             showToast('error', 'Nieprawidłowy ID sali');
             return;
           }
-          
+
           // Walidacja daty
           if (!formData.datetime || formData.datetime.trim() === '') {
+            console.error('BŁĄD: Brak datetime');
             showToast('error', 'Data i godzina są wymagane');
             return;
           }
@@ -385,9 +476,16 @@ export default function AdminDashboard() {
               format: formatValue
             });
             
+            console.log('[FRONTEND] Update successful, refreshing data...');
             showToast('success', 'Seans zaktualizowany');
-            loadData('sessions');
-            closeModal();
+            
+            try {
+              loadData('sessions');
+              closeModal();
+            } catch (refreshError) {
+              console.error('[FRONTEND] Error during refresh/close:', refreshError);
+              // Nie pokazuj błędu użytkownikowi, bo seans został zapisany
+            }
           } catch (error) {
             console.error('[FRONTEND] Update error:', error);
             console.error('[FRONTEND] Error response:', error?.response?.data);
@@ -400,17 +498,24 @@ export default function AdminDashboard() {
             return;
           }
         } else {
+          // Dodanie seansu
+          // Walidacja movie_id
+          if (!formData.movie_id || formData.movie_id === '') {
+            showToast('error', 'Film jest wymagany');
+            return;
+          }
+
           // Walidacja hall_id - sprawdź czy to poprawna liczba
-          const hallId = formData.hall_id && formData.hall_id.trim() !== '' 
-            ? parseInt(formData.hall_id) 
+          const hallIdStr = formData.hall_id ? String(formData.hall_id).trim() : '';
+          const hallId = hallIdStr !== ''
+            ? parseInt(hallIdStr)
             : null;
-          
+
           if (hallId !== null && isNaN(hallId)) {
             showToast('error', 'Nieprawidłowy ID sali');
             return;
           }
-          
-          // Dodanie seansu
+
           // Walidacja daty
           if (!formData.datetime || formData.datetime.trim() === '') {
             showToast('error', 'Data i godzina są wymagane');
@@ -461,7 +566,7 @@ export default function AdminDashboard() {
             return;
           }
         }
-        loadData('sessions');
+        // loadData('sessions') - usunięte, bo jest już wywoływane w odpowiednich miejscach
       } else if (modalType === 'hall') {
         if (editingItem) {
           // Edycja sali
@@ -500,7 +605,14 @@ export default function AdminDashboard() {
       }
       closeModal();
     } catch (error) {
-      showToast('error', 'Błąd podczas zapisywania');
+      console.error('[HANDLE SUBMIT] General error caught:', error);
+      console.error('[HANDLE SUBMIT] Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        stack: error?.stack
+      });
+      const errorMsg = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'Nieznany błąd';
+      showToast('error', `Błąd podczas zapisywania: ${errorMsg}`);
     }
   };
 
@@ -1031,11 +1143,68 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Plakat (URL):</label>
+                    <label>Plakat (ścieżka lub URL):</label>
                     <input
-                      type="url"
+                      type="text"
                       value={formData.poster}
                       onChange={(e) => setFormData({...formData, poster: e.target.value})}
+                      placeholder="/posters/film.jpg lub https://..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Zwiastun (YouTube URL):</label>
+                    <input
+                      type="url"
+                      value={formData.trailer_url}
+                      onChange={(e) => setFormData({...formData, trailer_url: e.target.value})}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Gatunek:</label>
+                    <input
+                      type="text"
+                      value={formData.genre}
+                      onChange={(e) => setFormData({...formData, genre: e.target.value})}
+                      placeholder="np. Sci-Fi, Drama"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Reżyser:</label>
+                    <input
+                      type="text"
+                      value={formData.director}
+                      onChange={(e) => setFormData({...formData, director: e.target.value})}
+                      placeholder="np. Christopher Nolan"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Obsada (opcjonalne):</label>
+                    <input
+                      type="text"
+                      value={formData.cast}
+                      onChange={(e) => setFormData({...formData, cast: e.target.value})}
+                      placeholder="np. Matthew McConaughey, Anne Hathaway"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>IMDb ID:</label>
+                    <input
+                      type="text"
+                      value={formData.imdb_id}
+                      onChange={(e) => setFormData({...formData, imdb_id: e.target.value})}
+                      placeholder="np. tt0816692"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Rok premiery:</label>
+                    <input
+                      type="number"
+                      value={formData.release_year}
+                      onChange={(e) => setFormData({...formData, release_year: e.target.value})}
+                      placeholder="np. 2014"
+                      min="1900"
+                      max="2100"
                     />
                   </div>
                 </>

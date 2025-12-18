@@ -15,13 +15,26 @@ export default function Login() {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+
+    // Walidacja po stronie klienta
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      showToast('error', 'Nieprawidłowy format email')
+      return
+    }
+
+    if (!password) {
+      showToast('error', 'Hasło jest wymagane')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await api.post('/auth/login', { email, password })
-      
+
       const token = res.data.token
-      setAuthToken(token) 
-      login(res.data) // сохраняем данные в контекст/стейт
+      setAuthToken(token)
+      login(res.data)
 
       showToast('success', 'Zalogowano pomyślnie')
       navigate('/')

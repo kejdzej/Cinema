@@ -21,12 +21,23 @@ router.get('/movies', authRequired, adminRequired, async (req, res) => {
 // Dodaj film
 router.post('/movies', authRequired, adminRequired, async (req, res) => {
   try {
-    const { title, description, duration, poster } = req.body;
+    const { title, description, duration, poster, trailer_url, genre, director, cast, imdb_id, release_year } = req.body;
     if (!title || !duration) return res.status(400).json({ message: 'Tytuł i czas trwania są wymagane' });
 
     const [result] = await pool.query(
-      'INSERT INTO movies (title, description, duration, poster) VALUES (?, ?, ?, ?)',
-      [title, description || '', parseInt(duration), poster || '']
+      'INSERT INTO movies (title, description, duration, poster, trailer_url, genre, director, cast, imdb_id, release_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        title,
+        description || '',
+        parseInt(duration),
+        poster || '',
+        trailer_url || null,
+        genre || null,
+        director || null,
+        cast || null,
+        imdb_id || null,
+        release_year ? parseInt(release_year) : null
+      ]
     );
     console.log('Movie added:', result.insertId);
     res.json({ message: 'Film dodany', id: result.insertId });
@@ -39,10 +50,22 @@ router.post('/movies', authRequired, adminRequired, async (req, res) => {
 // Edytuj film
 router.put('/movies/:id', authRequired, adminRequired, async (req, res) => {
   try {
-    const { title, description, duration, poster } = req.body;
+    const { title, description, duration, poster, trailer_url, genre, director, cast, imdb_id, release_year } = req.body;
     const [result] = await pool.query(
-      'UPDATE movies SET title = ?, description = ?, duration = ?, poster = ? WHERE id = ?',
-      [title, description, parseInt(duration), poster, req.params.id]
+      'UPDATE movies SET title = ?, description = ?, duration = ?, poster = ?, trailer_url = ?, genre = ?, director = ?, cast = ?, imdb_id = ?, release_year = ? WHERE id = ?',
+      [
+        title,
+        description,
+        parseInt(duration),
+        poster,
+        trailer_url || null,
+        genre || null,
+        director || null,
+        cast || null,
+        imdb_id || null,
+        release_year ? parseInt(release_year) : null,
+        req.params.id
+      ]
     );
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Film nie znaleziony' });
     res.json({ message: 'Film zaktualizowany' });

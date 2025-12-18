@@ -16,7 +16,7 @@ import Orders from "./pages/Orders.jsx";
 
 import ChatBot from "./components/ChatBot.jsx";
 import LoyaltyPoints from './pages/LoyaltyPoints.jsx';
-import RedeemRewards from './pages/RedeemRewards.jsx'; // Добавляем компонент для обмена наградами
+import RedeemRewards from './pages/RedeemRewards.jsx';
 import Recommendations from './pages/Recommendations.jsx';
 import History from './pages/History.jsx';
 import MoviesList from './pages/MoviesList.jsx';
@@ -29,104 +29,105 @@ const AuthContext = createContext(null)
 export function useAuth(){ return useContext(AuthContext) }
 
 function ProtectedRoute({ children }){
-  const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
-  return children
+  const { user, authLoading } = useAuth()
+
+  if (authLoading) {
+    return <div className="container" style={{ marginTop: '100px', textAlign: 'center' }}>Ładowanie...</div>
+  }
+
+  if (!user) return <Navigate to="/login" replace />
+  return children
 }
 
 export default function App(){
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const [toast, setToast] = useState(null)
-  const [user, setUser] = useState(null)
+  const [toast, setToast] = useState(null)
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
 
-  const showToast = (type, message) => {
-    setToast({ type, message })
-    setTimeout(()=> setToast(null), 2500)
-  }
+  const showToast = (type, message) => {
+    setToast({ type, message })
+    setTimeout(()=> setToast(null), 2500)
+  }
 
-  useEffect(()=>{
-    const token = getToken()
-    if (token){
-      setAuthToken(token)
-      const stored = localStorage.getItem('cinema_user')
-      if (stored) setUser(JSON.parse(stored))
-    }
-  }, [])
+  useEffect(()=>{
+    const token = getToken()
+    if (token){
+      setAuthToken(token)
+      const stored = localStorage.getItem('cinema_user')
+      if (stored) setUser(JSON.parse(stored))
+    }
+    setAuthLoading(false)
+  }, [])
 
-  // Smooth scroll to section when navigating with hash (/#cennik etc.)
-  useEffect(()=>{
-    if (location.hash){
-      const el = document.querySelector(location.hash)
-      if (el){
-        // Устанавливаем небольшую задержку, чтобы избежать конфликта с прокруткой маршрутизатора
-        setTimeout(()=> el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-      }
-    } else {
-      // Прокручиваем наверх только при смене пути, но не при смене хеша
-      if (!location.hash) window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }, [location.pathname, location.hash]) // Обновлено: зависимость от pathname И hash для корректной прокрутки
+  // Smooth scroll to section when navigating with hash (/#cennik etc.)
+  useEffect(()=>{
+    if (location.hash){
+      const el = document.querySelector(location.hash)
+      if (el){
+        setTimeout(()=> el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+      }
+    } else {
+      // Scroll to top when changing routes (not hash)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [location.pathname, location.hash])
 
-  const login = (payload)=>{
-    setUser(payload.user)
-    localStorage.setItem('cinema_user', JSON.stringify(payload.user))
-    setAuthToken(payload.token)
-    
-    // Если пользователь имеет роль admin, добавляем ее в localStorage
-    if (payload.user && payload.user.role) {
-      const updatedUser = { ...payload.user, role: payload.user.role }
-      setUser(updatedUser)
-      localStorage.setItem('cinema_user', JSON.stringify(updatedUser))
-    }
-  }
+  const login = (payload)=>{
+    setUser(payload.user)
+    localStorage.setItem('cinema_user', JSON.stringify(payload.user))
+    setAuthToken(payload.token)
 
-  const logout = ()=>{
-    clearToken()
-    setUser(null)
-    localStorage.removeItem('cinema_user')
-    navigate('/login')
-  }
+    if (payload.user && payload.user.role) {
+      const updatedUser = { ...payload.user, role: payload.user.role }
+      setUser(updatedUser)
+      localStorage.setItem('cinema_user', JSON.stringify(updatedUser))
+    }
+  }
 
-  // Список страниц, где Navbar не нужен
-  const noNavbarRoutes = ["/reservation", "/ticket"] 
-  const hideNavbar = noNavbarRoutes.some(r => location.pathname.startsWith(r))
+  const logout = ()=>{
+    clearToken()
+    setUser(null)
+    localStorage.removeItem('cinema_user')
+    navigate('/login')
+  }
 
-  return (
-    <ToastContext.Provider value={{ toast, showToast }}>
-      <AuthContext.Provider value={{ user, login, logout }}>
-        
-        {!hideNavbar && <Navbar />}
+  // Список страниц, где Navbar не нужен
+  const noNavbarRoutes = ["/reservation", "/ticket"]
+  const hideNavbar = noNavbarRoutes.some(r => location.pathname.startsWith(r))
 
-        <Routes>
-          <Route path="/" element={<Home />} />
+  return (
+    <ToastContext.Provider value={{ toast, showToast }}>
+      <AuthContext.Provider value={{ user, login, logout, authLoading }}>
+
+        {!hideNavbar && <Navbar />}
+
+        <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="/movies" element={<MoviesList />} />
           <Route path="/movie/:id" element={<MovieDetails />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><History/></ProtectedRoute>} />
           <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard/></ProtectedRoute>} />
           <Route path="/employee/dashboard" element={<ProtectedRoute><EmployeeDashboard/></ProtectedRoute>} />
-          <Route path="/reservation/:id" element={<Reservation />} />
-          <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
-          <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
-          {/* Защищаем OrderDetails, так как это личные данные */}
-          <Route path="/order/:id" element={<ProtectedRoute><OrderDetails/></ProtectedRoute>} />
-          {/* Маршрут для LoyaltyPoints */}
+          <Route path="/reservation/:id" element={<Reservation />} />
+          <Route path="/ticket/:id" element={<ProtectedRoute><TicketDetails/></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
+          <Route path="/order/:id" element={<ProtectedRoute><OrderDetails/></ProtectedRoute>} />
           <Route path="/loyalty" element={<ProtectedRoute><LoyaltyPoints/></ProtectedRoute>} />
-          {/* Маршрут для RedeemRewards */}
           <Route path="/rewards" element={<ProtectedRoute><RedeemRewards/></ProtectedRoute>} />
-          {/* Маршрут для Recommendations */}
           <Route path="/recommendations" element={<ProtectedRoute><Recommendations/></ProtectedRoute>} />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <ChatBot />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <ChatBot />
 
-        {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
-      </AuthContext.Provider>
-    </ToastContext.Provider>
-  )
+        {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
+      </AuthContext.Provider>
+    </ToastContext.Provider>
+  )
 }

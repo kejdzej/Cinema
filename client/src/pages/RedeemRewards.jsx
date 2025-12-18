@@ -58,8 +58,8 @@ export default function RedeemRewards() {
   return (
     <div className="container">
       <section className="loyalty-section">
-          <p className="label"><h1> Masz:{points} punktów </h1></p>
-        
+        <h1>Nagrody lojalnościowe</h1>
+        <p className="label">Masz: <strong>{points}</strong> punktów</p>
 
         <div className="rewards-grid">
           {rewards.map((r) => (
