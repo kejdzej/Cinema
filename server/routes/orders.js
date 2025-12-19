@@ -5,6 +5,20 @@ import QRCode from "qrcode";
 
 const router = Router();
 
+function normalizeItems(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return raw; // mysql JSON may already be parsed (array/object)
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 // 📌 Создание заказа
 router.post("/", authRequired, async (req, res) => {
   try {
@@ -32,11 +46,10 @@ router.get("/", authRequired, async (req, res) => {
     );
 
     const result = rows.map(r => {
-      let parsedItems = [];
-      try { parsedItems = JSON.parse(r.items) } catch { parsedItems = [] }
+      const parsedItems = normalizeItems(r.items);
       return {
         id: r.id,
-        items: parsedItems,
+        items: Array.isArray(parsedItems) ? parsedItems : [],
         total: r.total,
         status: r.status,
         created_at: r.created_at
@@ -53,6 +66,11 @@ router.get("/", authRequired, async (req, res) => {
 // 📌 Один заказ по ID
 router.get("/:id", authRequired, async (req, res) => {
   try {
+    // QR is dynamic (can change format), so don't allow caching
+    res.set("cache-control", "no-store");
+    res.set("pragma", "no-cache");
+    res.set("expires", "0");
+
     const [rows] = await pool.query(
       "SELECT * FROM orders WHERE id = ? AND user_id = ?",
       [req.params.id, req.user.id]
@@ -64,25 +82,21 @@ router.get("/:id", authRequired, async (req, res) => {
 
     const order = rows[0];
     
-    let parsedItems = [];
-    try { parsedItems = JSON.parse(order.items) } catch { parsedItems = [] }
+    const parsedItems = normalizeItems(order.items);
 
-    const data = {
-      id: order.id,
-      items: parsedItems,
-      total: order.total,
-      date: order.created_at
-    };
-
-    // генерируем QR
-    const qr = await QRCode.toDataURL(JSON.stringify(data));
+    // Generujemy QR w prostym formacie (nie JSON),
+    // żeby po skanowaniu nie wyświetlał się "surowy" JSON.
+    // Szczegóły zamówienia pracownik i tak pobiera po ID z bazy.
+    const qr_payload = `ORDER:${order.id}`;
+    const qr = await QRCode.toDataURL(qr_payload);
 
     res.json({
       id: order.id,
-      items: parsedItems,
+      items: Array.isArray(parsedItems) ? parsedItems : [],
       total: order.total,
       status: order.status,
       created_at: order.created_at,
+      qr_payload,
       qr
     });
   } catch (e) {

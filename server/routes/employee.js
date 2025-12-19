@@ -4,6 +4,36 @@ import { authRequired } from "../middleware/auth.js";
 
 const router = Router();
 
+function safeJsonParse(input) {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return null;
+  }
+}
+
+function extractOrderIdFromQr(qrDataRaw) {
+  const qrData = String(qrDataRaw || "").trim();
+  if (!qrData) return null;
+
+  // Primary format in this project: JSON string with { id, items, total, date }
+  if (qrData.startsWith("{") && qrData.endsWith("}")) {
+    const parsed = safeJsonParse(qrData);
+    const id = parsed?.id;
+    const numericId = Number.isFinite(Number(id)) ? parseInt(id) : null;
+    return numericId && numericId > 0 ? numericId : null;
+  }
+
+  // Fallbacks for potential alternate formats
+  const m1 = qrData.match(/ORDER:(\d+)/i);
+  if (m1?.[1]) return parseInt(m1[1]);
+
+  const m2 = qrData.match(/"id"\s*:\s*(\d+)/i);
+  if (m2?.[1]) return parseInt(m2[1]);
+
+  return null;
+}
+
 // Middleware - sprawdź czy użytkownik to pracownik lub admin
 const employeeRequired = (req, res, next) => {
   if (req.user.role !== 'employee' && req.user.role !== 'admin') {
@@ -76,6 +106,58 @@ router.post("/tickets/verify", authRequired, employeeRequired, async (req, res) 
   } catch (error) {
     console.error("Verify ticket error:", error);
     res.status(500).json({ message: "Błąd weryfikacji biletu" });
+  }
+});
+
+// Weryfikacja zamówienia (produkty) przez QR kod
+router.post("/orders/verify", authRequired, employeeRequired, async (req, res) => {
+  try {
+    const { qrData } = req.body;
+
+    if (!qrData) {
+      return res.status(400).json({ message: "Brak danych QR" });
+    }
+
+    const orderId = extractOrderIdFromQr(qrData);
+    if (!orderId || Number.isNaN(orderId)) {
+      return res.status(400).json({ message: "Nieprawidłowy format QR zamówienia" });
+    }
+
+    const [rows] = await pool.query(
+      `
+        SELECT o.*, u.name as user_name, u.email as user_email
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        WHERE o.id = ?
+        LIMIT 1
+      `,
+      [orderId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: "Zamówienie nie znalezione" });
+    }
+
+    const order = rows[0];
+    const items = typeof order.items === "string" ? safeJsonParse(order.items) : order.items;
+    const normalized = {
+      id: order.id,
+      status: order.status,
+      total: order.total,
+      created_at: order.created_at,
+      user_name: order.user_name,
+      user_email: order.user_email,
+      items: Array.isArray(items) ? items : [],
+    };
+
+    return res.json({
+      message: "Zamówienie odczytane",
+      order: normalized,
+      verified: true,
+    });
+  } catch (error) {
+    console.error("Verify order error:", error);
+    res.status(500).json({ message: "Błąd weryfikacji zamówienia" });
   }
 });
 

@@ -3,13 +3,19 @@ import { Router } from "express";
 import PDFDocument from "pdfkit";
 import { pool } from "../db.js";
 import QRCode from "qrcode";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { calculateTotalPrice, calculateNumericPrice, detectHallType } from "../utils/pricingCalculator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+
+// PDFKit's built-in fonts don't cover many Unicode glyphs (PL/CYR).
+// Bundle DejaVu fonts via dependency to avoid "garbage" characters after download.
+const FONT_REGULAR = require.resolve("dejavu-fonts-ttf/ttf/DejaVuSans.ttf");
+const FONT_BOLD = require.resolve("dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf");
 
 const router = Router();
 
@@ -60,36 +66,38 @@ router.get("/ticket/:id", async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=bilet_${id}.pdf`);
 
-    // Stwórz PDF z obsługą polskich znaków
+    // Stwórz PDF (z Unicode fontem dla PL/CYR znaków)
     const doc = new PDFDocument({ 
       size: 'A4', 
       margin: 50,
-      // Użyj standardowego fontu który obsługuje polskie znaki
     });
+
+    // Ensure all text uses a Unicode-capable font (fixes "weird symbols")
+    doc.registerFont("DejaVu", FONT_REGULAR);
+    doc.registerFont("DejaVuBold", FONT_BOLD);
+    doc.font("DejaVu");
+
     doc.pipe(res);
     
-    // Ustaw font który obsługuje polskie znaki (Helvetica obsługuje podstawowe)
-    // Dla lepszej obsługi można użyć fontu z polskimi znakami
-
     // Nagłówek (bez emoji - PDF nie obsługuje dobrze emoji)
-    doc.fontSize(24).fillColor('#000000').text("BILET DO KINA", { align: "center" });
+    doc.font("DejaVuBold").fontSize(24).fillColor('#000000').text("BILET DO KINA", { align: "center" });
     doc.moveDown(0.5);
-    doc.fontSize(10).fillColor('#666666').text(`Numer biletu: #${ticket.id}`, { align: "center" });
+    doc.font("DejaVu").fontSize(10).fillColor('#666666').text(`Numer biletu: #${ticket.id}`, { align: "center" });
     doc.moveDown(1);
 
     // Główna sekcja
-    doc.fontSize(18).fillColor('#000000').text(ticket.title, { align: "center" });
+    doc.font("DejaVuBold").fontSize(18).fillColor('#000000').text(ticket.title, { align: "center" });
     doc.moveDown(0.3);
     
     // Format 3D jeśli dostępny
     if (ticket.format === '3D') {
-      doc.fontSize(14).fillColor('#FFD700').text("3D", { align: "center" });
+      doc.font("DejaVuBold").fontSize(14).fillColor('#B8860B').text("3D", { align: "center" });
       doc.moveDown(0.3);
     }
     
     doc.moveDown(0.5);
     
-    doc.fontSize(12).fillColor('#333333');
+    doc.font("DejaVu").fontSize(12).fillColor('#333333');
     doc.text(`Data i godzina: ${new Date(ticket.datetime).toLocaleString("pl-PL")}`);
     doc.text(`Czas trwania: ${ticket.duration} minut`);
     
@@ -111,7 +119,7 @@ router.get("/ticket/:id", async (req, res) => {
     });
     
     doc.moveDown(0.5);
-    doc.fontSize(10).fillColor('#666666').text("Kod QR do weryfikacji", { align: "center" });
+    doc.font("DejaVu").fontSize(10).fillColor('#666666').text("Kod QR do weryfikacji", { align: "center" });
 
     doc.moveDown(1.5);
 
@@ -125,15 +133,12 @@ router.get("/ticket/:id", async (req, res) => {
        .stroke();
     doc.moveDown(1);
     
-    // Użyj prostych tekstów bez polskich znaków diakrytycznych dla lepszej kompatybilności
-    // lub użyj Unicode escape sequences
-    // Teksty z poprawnymi polskimi znakami - PDFKit obsługuje UTF-8
-    doc.fontSize(13).fillColor('#000000').text("Dziękujemy za zakup!", { align: "center" });
+    doc.font("DejaVuBold").fontSize(13).fillColor('#000000').text("Dziękujemy za zakup!", { align: "center" });
     doc.moveDown(0.4);
-    doc.fontSize(11).fillColor('#666666').text("Życzymy miłego seansu!", { align: "center" });
+    doc.font("DejaVu").fontSize(11).fillColor('#666666').text("Życzymy miłego seansu!", { align: "center" });
     
     doc.moveDown(1.2);
-    doc.fontSize(9).fillColor('#999999').text("Ten bilet jest ważny tylko na wskazany seans.", { align: "center" });
+    doc.font("DejaVu").fontSize(9).fillColor('#999999').text("Ten bilet jest ważny tylko na wskazany seans.", { align: "center" });
     doc.moveDown(0.3);
     doc.text("Prosimy o przybycie 15 minut przed rozpoczęciem seansu.", { align: "center" });
 
