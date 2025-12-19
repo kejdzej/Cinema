@@ -51,6 +51,11 @@ export default function OrderDetails() {
         }}>
           <b>Twój kod QR:</b><br />
           <img src={order.qr} alt="QR Code" style={{ width: "200px", marginTop: "10px" }} />
+          {order.qr_payload && (
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.8 }}>
+              Zawartość QR: <code>{order.qr_payload}</code>
+            </div>
+          )}
         </div>
       </div>
 

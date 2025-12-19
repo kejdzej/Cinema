@@ -5,7 +5,15 @@ export default function MovieCard({ movie }) {
 
   return (
     <div className="card movie-card">
-      <img src={poster} alt={movie.title} className="poster" />
+      <img
+        src={poster}
+        alt={movie.title}
+        className="poster"
+        loading="lazy"
+        onError={(e) => {
+          e.currentTarget.src = "/posters/placeholder.jpg";
+        }}
+      />
       <div className="movie-info">
         <h2>{movie.title}</h2>
         <div className="sessions">

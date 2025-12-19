@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [editingItem, setEditingItem] = useState(null);
   const { showToast } = useToast();
   const { user } = useAuth();
+  const [posterResolving, setPosterResolving] = useState(false);
+  const [posterResolveError, setPosterResolveError] = useState('');
 
   // Formularz dla filmów, seansów i sal
   const [formData, setFormData] = useState({
@@ -42,6 +44,32 @@ export default function AdminDashboard() {
     published_at: '',
     highlight: false
   });
+
+  const resolvePosterUrlIfNeeded = async () => {
+    const raw = String(formData.poster || '').trim();
+    setPosterResolveError('');
+
+    // Only attempt for external links
+    if (!raw || !/^https?:\/\//i.test(raw)) return;
+
+    // Already a direct image URL
+    if (/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(raw)) return;
+
+    // Resolve only for supported hosts (IMDb/Amazon image CDN) via backend
+    try {
+      setPosterResolving(true);
+      const resp = await api.get('/images/resolve', { params: { url: raw } });
+      const resolved = resp?.data?.url;
+      if (resolved && typeof resolved === 'string') {
+        setFormData((prev) => ({ ...prev, poster: resolved }));
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.message || 'Nie udało się rozpoznać linku do plakatu (wklej bezpośredni link do .jpg/.png)';
+      setPosterResolveError(msg);
+    } finally {
+      setPosterResolving(false);
+    }
+  };
 
   // Załaduj wszystkie dane na początku (dla kafelków statystyk)
   useEffect(() => {
@@ -1148,8 +1176,43 @@ export default function AdminDashboard() {
                       type="text"
                       value={formData.poster}
                       onChange={(e) => setFormData({...formData, poster: e.target.value})}
+                      onBlur={resolvePosterUrlIfNeeded}
                       placeholder="/posters/film.jpg lub https://..."
                     />
+                    <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={posterResolving}
+                        onClick={resolvePosterUrlIfNeeded}
+                        title="Dla linków typu IMDb mediaviewer spróbuj zamienić na bezpośredni obraz"
+                        style={{ opacity: posterResolving ? 0.7 : 1 }}
+                      >
+                        {posterResolving ? 'Rozpoznaję…' : 'Zamień link (IMDb) → obraz'}
+                      </button>
+                      {posterResolveError && (
+                        <span style={{ color: '#ff6b6b', fontSize: 12 }}>
+                          {posterResolveError}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <img
+                        src={formData.poster || '/posters/placeholder.jpg'}
+                        alt="Podgląd plakatu"
+                        style={{
+                          width: 140,
+                          height: 210,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.15)'
+                        }}
+                        onError={(e) => { e.currentTarget.src = '/posters/placeholder.jpg'; }}
+                      />
+                      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6 }}>
+                        Wskazówka: link z IMDb typu <code>.../mediaviewer/...</code> to strona HTML — trzeba wkleić bezpośredni URL obrazka (.jpg).
+                      </div>
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>Zwiastun (YouTube URL):</label>
