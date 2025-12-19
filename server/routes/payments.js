@@ -27,7 +27,6 @@ router.post('/create-payment-intent', authRequired, async (req, res) => {
       },
     });
 
-    // Insert payment record as pending only if ticket exists (to satisfy FK)
     try {
       if (ticketId) {
         const [rows] = await pool.query('SELECT id FROM tickets WHERE id = ?', [ticketId]);
@@ -43,7 +42,6 @@ router.post('/create-payment-intent', authRequired, async (req, res) => {
         console.warn('Skipping payments insert: no ticketId provided');
       }
     } catch (dbErr) {
-      // non-fatal: log and continue
       console.error('DB insert payment error', dbErr);
     }
 

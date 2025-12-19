@@ -48,16 +48,12 @@ router.post("/purchase", authRequired, async (req, res) => {
       capacity: parseInt(session.hall_capacity) || 40
     };
 
-    // Upewnij się, że price jest liczbą
     const sessionPrice = parseNumericPrice(session.price);
 
-    // Oblicz cenę używając wspólnego utility
     const totalPrice = calculateTotalPrice(seatArr, hallInfo, sessionPrice);
 
-    // Debug: loguj informacje o miejscach
     console.log(`[PRICE CALC] Sala: ${hallInfo.name}, Type: ${hallInfo.type}, Capacity: ${hallInfo.capacity}, BasePrice: ${sessionPrice}, Seats: ${seatArr.join(', ')}, Total: ${totalPrice} zł`);
 
-    // tworzymy bilet
     const [result] = await pool.query(
       "INSERT INTO tickets (session_id, user_id, seats, price) VALUES (?, ?, ?, ?)",
       [session_id, req.user.id, seatStr, totalPrice]

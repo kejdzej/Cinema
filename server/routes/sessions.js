@@ -3,7 +3,6 @@ import { pool } from '../db.js';
 
 const router = Router();
 
-// wszystkie seanse
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`

@@ -39,35 +39,27 @@ export function detectHallType(hallName = '', description = '') {
 export function isSeatCouch(seat, hallType, hallName = '', hallCapacity = 40, totalRows = null) {
   const rowLetter = seat.trim()[0];
 
-  // Sala VIP: rzędy F-G to kanapy VIP (niezależnie od nazwy)
-  if (hallType === 'vip') {
+  if (hallType === 'vip') { // Sala 4 
     return ['F', 'G'].includes(rowLetter);
   }
 
-  // Sala mixed (np. Sala 3): rzędy I-J to kanapy
-  if (hallType === 'mixed') {
+  if (hallType === 'mixed') { // Sala 3
     return ['I', 'J'].includes(rowLetter);
   }
 
-  // Standardowy układ: ostatnie 2 rzędy to kanapy
   const rowNumber = rowLetter.charCodeAt(0);
 
-  // Jeśli mamy totalRows (z klienta), użyj tego
   if (totalRows !== null) {
-    const rowIndex = rowLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
+    const rowIndex = rowLetter.charCodeAt(0) - 65;
     return rowIndex >= totalRows - 2;
   }
 
-  // Inaczej użyj logiki opartej na pojemności sali
-  if (hallCapacity === 72) {
-    // Sala 1: 9 rzędów (A-I), ostatnie 2 to H i I
-    return rowNumber >= 72; // H = 72, I = 73
-  } else if (hallCapacity === 50) {
-    // Sala 2: 5 rzędów (A-E), ostatnie 2 (D-E) to kanapy
-    return rowNumber === 68 || rowNumber === 69; // D = 68, E = 69
+  if (hallCapacity === 72) { //Sala 1
+    return rowNumber >= 72; 
+  } else if (hallCapacity === 50) { // Sala 2
+    return rowNumber === 68 || rowNumber === 69;
   } else {
-    // Standardowy: 7 rzędów (A-G), ostatnie 2 to F i G
-    return rowNumber >= 70; // F = 70, G = 71
+    return rowNumber >= 70;
   }
 }
 

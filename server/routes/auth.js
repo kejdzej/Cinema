@@ -9,23 +9,19 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Walidacja pól
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Wszystkie pola są wymagane' });
     }
 
-    // Walidacja email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ message: 'Nieprawidłowy format email' });
     }
 
-    // Walidacja hasła
     if (password.length < 6) {
       return res.status(400).json({ message: 'Hasło musi mieć minimum 6 znaków' });
     }
 
-    // Sanityzacja - trim whitespace
     const sanitizedName = name.trim();
     const sanitizedEmail = email.trim().toLowerCase();
 
@@ -45,18 +41,15 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Walidacja pól
     if (!email || !password) {
       return res.status(400).json({ message: 'Email i hasło są wymagane' });
     }
 
-    // Walidacja email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ message: 'Nieprawidłowy format email' });
     }
 
-    // Sanityzacja
     const sanitizedEmail = email.trim().toLowerCase();
 
     const [rows] = await pool.query('SELECT id, name, email, password_hash, role FROM users WHERE email = ?', [sanitizedEmail]);
