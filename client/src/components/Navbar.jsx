@@ -15,8 +15,8 @@ export default function Navbar() {
   // Warunki dla różnych stron
   const isHomePage = location.pathname === '/';
   const isAdminPanel = location.pathname.startsWith('/admin');
-  const isDashboard = location.pathname === '/dashboard';
-  const showSearchbar = !isAdminPanel && !location.pathname.startsWith('/reservation') && !location.pathname.startsWith('/ticket');
+  const isEmployeePanel = location.pathname.startsWith('/employee');
+  const showSearchbar = !isAdminPanel && !isEmployeePanel && !location.pathname.startsWith('/reservation') && !location.pathname.startsWith('/ticket');
 
   useEffect(() => {
     if (query.trim().length > 1) {
@@ -64,41 +64,26 @@ export default function Navbar() {
       <div className="navbar-left">
         <Link to="/" className="brand">🎬 Cinema</Link>
 
-        {/* Linki do sekcji tylko na stronie głównej */}
-        {isHomePage && (
-          <>
-            <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
-            <Link to="/movies">Filmy</Link>
-            <span onClick={() => scrollToSection('popcorn')} style={{cursor: 'pointer'}}>Popcorn Bar</span>
-            <span onClick={() => scrollToSection('cennik')} style={{cursor: 'pointer'}}>Cennik</span>
-            <span onClick={() => scrollToSection('aktualnosci')} style={{cursor: 'pointer'}}>Aktualności</span>
-          </>
+        {/* Zawsze pokazuj link do strony głównej */}
+        {isHomePage ? (
+          <span onClick={() => scrollToSection('repertuar')} style={{cursor: 'pointer'}}>Repertuar</span>
+        ) : (
+          <Link to="/">Strona główna</Link>
         )}
 
-        {/* Na innych stronach (oprócz admin) pokaż link do strony głównej */}
-        {!isHomePage && !isAdminPanel && (
-          <>
-            <Link to="/">Strona główna</Link>
-            <Link to="/movies">Filmy</Link>
-          </>
-        )}
+        <Link to="/movies">Filmy</Link>
 
-        {/* W panelu admin przycisk powrotu */}
-        {isAdminPanel && (
-          <span style={{cursor: 'pointer'}} onClick={() => window.history.back()}>← Powrót</span>
-        )}
-
-        {/* Linki dla zalogowanych użytkowników - poprawiona kolejność */}
+        {/* Linki dla zalogowanych użytkowników - zawsze widoczne */}
         {user && (
           <>
-            {!isAdminPanel && !isDashboard && <Link to="/dashboard">Moje zamówienia</Link>}
+            <Link to="/dashboard">Moje zamówienia</Link>
             <Link to="/rewards">Punkty i Nagrody</Link>
             <Link to="/recommendations">Rekomendacje</Link>
           </>
         )}
 
-        {/* Linki dla admina i pracownika */}
-        {user && user.role === 'admin' && !isAdminPanel && (
+        {/* Linki dla admina i pracownika - zawsze widoczne */}
+        {user && user.role === 'admin' && (
           <Link to="/admin/dashboard" className="admin-link">⚙️ Admin</Link>
         )}
         {user && (user.role === 'employee' || user.role === 'admin') && (

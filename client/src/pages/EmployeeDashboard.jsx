@@ -5,6 +5,7 @@ import { useToast, useAuth } from '../App.jsx';
 export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState('tickets');
   const [orders, setOrders] = useState([]);
+  const [history, setHistory] = useState([]);
   const [qrInput, setQrInput] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
   const [orderQrInput, setOrderQrInput] = useState('');
@@ -17,6 +18,8 @@ export default function EmployeeDashboard() {
     if (user && (user.role === 'employee' || user.role === 'admin')) {
       if (activeTab === 'orders') {
         loadOrders();
+      } else if (activeTab === 'history') {
+        loadHistory();
       }
     }
   }, [activeTab, user]);
@@ -28,6 +31,18 @@ export default function EmployeeDashboard() {
       setOrders(res.data);
     } catch (error) {
       showToast('error', 'Błąd ładowania zamówień');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/employee/orders/history/collected');
+      setHistory(res.data);
+    } catch (error) {
+      showToast('error', 'Błąd ładowania historii');
     } finally {
       setLoading(false);
     }
@@ -97,6 +112,7 @@ export default function EmployeeDashboard() {
       case 'pending': return '#ff9800';
       case 'ready': return '#2196f3';
       case 'collected': return '#4caf50';
+      case 'free': return '#9c27b0';
       default: return '#666';
     }
   };
@@ -106,6 +122,7 @@ export default function EmployeeDashboard() {
       case 'pending': return 'Oczekuje';
       case 'ready': return 'Gotowe';
       case 'collected': return 'Odebrane';
+      case 'free': return 'Nagroda';
       default: return status;
     }
   };
@@ -115,7 +132,7 @@ export default function EmployeeDashboard() {
       <h1>👔 Panel Pracownika Kina</h1>
 
       <div className="admin-tabs">
-        {['tickets', 'orders'].map(tab => (
+        {['tickets', 'orders', 'history'].map(tab => (
           <button
             key={tab}
             className={`btn ${activeTab === tab ? '' : 'btn-ghost'}`}
@@ -123,6 +140,7 @@ export default function EmployeeDashboard() {
           >
             {tab === 'tickets' && '🎫 Weryfikacja biletów'}
             {tab === 'orders' && '🍿 Zamówienia z baru'}
+            {tab === 'history' && '📜 Historia (24h)'}
           </button>
         ))}
       </div>
@@ -233,7 +251,7 @@ export default function EmployeeDashboard() {
               <hr />
               <p><b>Razem:</b> {Number(orderVerificationResult.order.total) === 0 ? <span style={{ color: 'var(--primary)' }}>Gratis (punkty)</span> : `${orderVerificationResult.order.total} zł`}</p>
               <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {orderVerificationResult.order.status === 'pending' && (
+                {(orderVerificationResult.order.status === 'pending' || orderVerificationResult.order.status === 'free') && (
                   <button className="btn" onClick={() => updateOrderStatus(orderVerificationResult.order.id, 'ready')}>
                     ✓ Oznacz jako gotowe
                   </button>
@@ -271,15 +289,15 @@ export default function EmployeeDashboard() {
                   <b>Produkty:</b>
                   {order.items.map((item, idx) => (
                     <div key={idx} style={{ marginLeft: '10px' }}>
-                      {item.qty} × {item.name} - {item.price * item.qty} zł
+                      {item.qty} × {item.name} - {item.price ? `${(item.price * item.qty).toFixed(2)} zł` : 'Gratis'}
                     </div>
                   ))}
                 </div>
                 
-                <p><b>Razem:</b> {order.total} zł</p>
+                <p><b>Razem:</b> {Number(order.total) === 0 ? <span style={{ color: 'var(--primary)' }}>Gratis (punkty)</span> : `${order.total} zł`}</p>
 
                 <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
-                  {order.status === 'pending' && (
+                  {(order.status === 'pending' || order.status === 'free') && (
                     <button className="btn" onClick={() => updateOrderStatus(order.id, 'ready')}>
                       ✓ Oznacz jako gotowe
                     </button>
@@ -297,6 +315,58 @@ export default function EmployeeDashboard() {
           {orders.length === 0 && !loading && (
             <div className="muted" style={{ textAlign: 'center', marginTop: '40px' }}>
               Brak zamówień do obsługi
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* HISTORIA ODEBRANYCH ZAMÓWIEŃ */}
+      {activeTab === 'history' && (
+        <div className="admin-section">
+          <div className="section-header">
+            <h2>📜 Historia odebranych zamówień (ostatnie 24h)</h2>
+            <button className="btn" onClick={loadHistory}>
+              🔄 Odśwież
+            </button>
+          </div>
+
+          <div className="grid">
+            {history.map(order => (
+              <div key={order.id} className="card" style={{ opacity: 0.85 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h3>Zamówienie #{order.id}</h3>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '4px',
+                    background: '#4caf50',
+                    color: 'white',
+                    fontSize: '0.9em'
+                  }}>
+                    ✓ Odebrane
+                  </span>
+                </div>
+
+                <p><b>Klient:</b> {order.user_name}</p>
+                <p><b>Email:</b> {order.user_email}</p>
+                <p><b>Data:</b> {new Date(order.created_at).toLocaleString('pl-PL')}</p>
+
+                <div style={{ margin: '10px 0' }}>
+                  <b>Produkty:</b>
+                  {order.items.map((item, idx) => (
+                    <div key={idx} style={{ marginLeft: '10px' }}>
+                      {item.qty} × {item.name} - {item.price ? `${(item.price * item.qty).toFixed(2)} zł` : 'Gratis'}
+                    </div>
+                  ))}
+                </div>
+
+                <p><b>Razem:</b> {Number(order.total) === 0 ? <span style={{ color: 'var(--primary)' }}>Gratis (punkty)</span> : `${order.total} zł`}</p>
+              </div>
+            ))}
+          </div>
+
+          {history.length === 0 && !loading && (
+            <div className="muted" style={{ textAlign: 'center', marginTop: '40px' }}>
+              Brak odebranych zamówień w ciągu ostatnich 24 godzin
             </div>
           )}
         </div>

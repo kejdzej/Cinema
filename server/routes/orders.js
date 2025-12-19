@@ -117,7 +117,7 @@ router.get("/bar/pending", authRequired, async (req, res) => {
       `SELECT o.*, u.name as user_name, u.email as user_email
        FROM orders o
        JOIN users u ON o.user_id = u.id
-       WHERE o.status IN ('pending', 'ready')
+       WHERE o.status IN ('pending', 'ready', 'free')
        ORDER BY o.created_at DESC`
     );
 
@@ -141,7 +141,7 @@ router.patch("/:id/status", authRequired, async (req, res) => {
 
     // Sprawdź czy użytkownik to pracownik/admin (może zmieniać statusy barowe)
     if (req.user.role === 'admin' || req.user.role === 'employee') {
-      if (!['pending', 'ready', 'collected', 'paid', 'failed', 'completed'].includes(status)) {
+      if (!['pending', 'ready', 'collected', 'paid', 'failed', 'completed', 'free'].includes(status)) {
         return res.status(400).json({ message: "Nieprawidłowy status" });
       }
       

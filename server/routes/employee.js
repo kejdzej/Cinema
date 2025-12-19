@@ -165,24 +165,24 @@ router.post("/orders/verify", authRequired, employeeRequired, async (req, res) =
 router.get("/orders", authRequired, employeeRequired, async (req, res) => {
   try {
     const { status } = req.query;
-    
+
     let query = `
       SELECT o.*, u.name as user_name, u.email as user_email
       FROM orders o
       JOIN users u ON o.user_id = u.id
     `;
-    
+
     const params = [];
     if (status) {
       query += " WHERE o.status = ?";
       params.push(status);
     } else {
-      // Pokaż wszystkie zamówienia które nie są jeszcze odebrane (włącznie z 'paid' i 'completed' które mogą być błędnie oznaczone)
-      query += " WHERE o.status IN ('pending', 'ready', 'paid', 'completed')";
+      // Pokaż wszystkie zamówienia które nie są jeszcze odebrane (włącznie z 'paid', 'completed' i 'free' dla nagród)
+      query += " WHERE o.status IN ('pending', 'ready', 'paid', 'completed', 'free')";
     }
-    
+
     query += " ORDER BY o.created_at DESC";
-    
+
     const [rows] = await pool.query(query, params);
 
     const result = rows.map(r => ({
@@ -194,6 +194,30 @@ router.get("/orders", authRequired, employeeRequired, async (req, res) => {
   } catch (error) {
     console.error("Get orders error:", error);
     res.status(500).json({ message: "Błąd pobierania zamówień" });
+  }
+});
+
+// Historia odebranych zamówień (ostatnie 24h)
+router.get("/orders/history/collected", authRequired, employeeRequired, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT o.*, u.name as user_name, u.email as user_email
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       WHERE o.status = 'collected'
+         AND o.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       ORDER BY o.created_at DESC`
+    );
+
+    const result = rows.map(r => ({
+      ...r,
+      items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Get history error:", error);
+    res.status(500).json({ message: "Błąd pobierania historii" });
   }
 });
 
