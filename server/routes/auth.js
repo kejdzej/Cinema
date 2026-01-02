@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { authRequired } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -29,8 +30,19 @@ router.post('/register', async (req, res) => {
     if (exists.length) return res.status(400).json({ message: 'Email jest już w użyciu' });
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)', [sanitizedName, sanitizedEmail, hash]);
-    return res.json({ message: 'Zarejestrowano pomyślnie' });
+    const [result] = await pool.query('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)', [sanitizedName, sanitizedEmail, hash]);
+
+    const token = jwt.sign({
+      id: result.insertId,
+      email: sanitizedEmail,
+      name: sanitizedName,
+      role: 'user'
+    }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    return res.json({
+      message: 'Użytkownik zarejestrowany pomyślnie',
+      token
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: 'Błąd serwera' });
@@ -78,6 +90,25 @@ router.post('/login', async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: 'Błąd serwera' });
+  }
+});
+
+// Get current user
+router.get('/me', authRequired, async (req, res) => {
+  try {
+    const [users] = await pool.query(
+      'SELECT id, name, email, role, points, loyalty_code FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (!users.length) {
+      return res.status(404).json({ message: 'Użytkownik nie znaleziony' });
+    }
+
+    res.json(users[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Błąd serwera' });
   }
 });
 
