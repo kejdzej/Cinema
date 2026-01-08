@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Router } from "express";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
+import { detectHallType, isSeatCouch } from "../utils/pricingCalculator.js";
 
 const router = Router();
 
@@ -57,7 +58,7 @@ const REWARD_CATALOG = [
 const FREE_TICKET_REWARD = REWARD_CATALOG.find((r) => r.id === "free-ticket");
 const FREE_TICKET_COST = FREE_TICKET_REWARD?.cost || 500;
 
-const BASE_POINTS_FOR_PURCHASE = 50;
+const BASE_POINTS_FOR_PURCHASE = 1;
 
 const historyDescriptions = {
   purchase: "Zakup biletu",
@@ -263,15 +264,42 @@ router.post("/redeem/free-ticket", authRequired, async (req, res) => {
     }
 
     const [[session]] = await connection.query(
-      `SELECT s.id, s.datetime, s.hall_id, m.title 
-       FROM sessions s 
+      `SELECT s.id, s.datetime, s.hall_id, s.format, m.title, h.name as hall_name, h.description as hall_description, h.capacity as hall_capacity
+       FROM sessions s
        JOIN movies m ON m.id = s.movie_id
+       LEFT JOIN cinema_halls h ON s.hall_id = h.id
        WHERE s.id = ? FOR UPDATE`,
       [session_id]
     );
     if (!session) {
       await connection.rollback();
       return res.status(404).json({ message: "Seans nie istnieje." });
+    }
+
+    if (session.format !== '2D') {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Darmowy bilet dostępny tylko na seanse 2D."
+      });
+    }
+
+    const hallType = detectHallType(session.hall_name, session.hall_description);
+    if (hallType === 'vip') {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Darmowy bilet nie jest dostępny dla sali VIP."
+      });
+    }
+
+    const hallCapacity = parseInt(session.hall_capacity) || 0;
+
+    for (const seat of seatList) {
+      if (isSeatCouch(seat, hallType, session.hall_name || '', hallCapacity)) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: `Darmowy bilet dostępny tylko na fotele standardowe. Miejsce ${seat} to kanapa.`
+        });
+      }
     }
 
     const [takenRows] = await connection.query(

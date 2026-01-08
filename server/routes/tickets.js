@@ -7,12 +7,12 @@ import { calculateTotalPrice, calculateNumericPrice as parseNumericPrice, detect
 
 const router = Router();
 
-const MIN_POINTS_PER_PURCHASE = BASE_POINTS_FOR_PURCHASE || 50;
+const MIN_POINTS_PER_PURCHASE = BASE_POINTS_FOR_PURCHASE || 1;
 
 const calculatePointsForAmount = (amount) => {
   const numeric = parseNumericPrice(amount);
-  if (numeric <= 0) return MIN_POINTS_PER_PURCHASE;
-  return Math.max(MIN_POINTS_PER_PURCHASE, Math.round(numeric));
+  if (numeric <= 0) return 0;
+  return Math.round(numeric); // 1 punkt = 1 złotówka
 };
 
 const markRewardTicket = (ticket) => {

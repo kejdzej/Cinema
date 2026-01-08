@@ -13,17 +13,14 @@ export function detectHallType(hallName = '', description = '') {
   const name = String(hallName).toLowerCase();
   const desc = String(description).toLowerCase();
 
-  // Sprawdź czy to VIP
   if (name.includes('vip') || desc.includes('vip')) {
     return 'vip';
   }
 
-  // Sprawdź czy to mixed (Sala 3)
   if (name.includes('sala 3')) {
     return 'mixed';
   }
 
-  // Domyślnie standard
   return 'standard';
 }
 
@@ -39,14 +36,12 @@ export function detectHallType(hallName = '', description = '') {
 export function isSeatCouch(seat, hallType, hallName = '', hallCapacity = 40, totalRows = null) {
   const rowLetter = seat.trim()[0];
 
-  if (hallType === 'vip') { // Sala 4 
+  // Sala 3 (mixed) i Sala 4 (VIP) - obie mają kanapy w rzędach F, G
+  if (hallType === 'vip' || hallType === 'mixed') {
     return ['F', 'G'].includes(rowLetter);
   }
 
-  if (hallType === 'mixed') { // Sala 3
-    return ['I', 'J'].includes(rowLetter);
-  }
-
+  // Dla sal standardowych używamy capacity
   const rowNumber = rowLetter.charCodeAt(0);
 
   if (totalRows !== null) {
@@ -54,10 +49,10 @@ export function isSeatCouch(seat, hallType, hallName = '', hallCapacity = 40, to
     return rowIndex >= totalRows - 2;
   }
 
-  if (hallCapacity === 72) { //Sala 1
-    return rowNumber >= 72; 
-  } else if (hallCapacity === 50) { // Sala 2
-    return rowNumber === 68 || rowNumber === 69;
+  if (hallCapacity === 88) { // Sala 1: kanapy w H, I
+    return rowNumber === 72 || rowNumber === 73; // H=72, I=73
+  } else if (hallCapacity === 70) { // Sala 2: kanapy w D, E
+    return rowNumber === 68 || rowNumber === 69; // D=68, E=69
   } else {
     return rowNumber >= 70;
   }

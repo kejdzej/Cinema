@@ -20,7 +20,7 @@ export default function ChatBot() {
       const res = await api.post("/assistant", { message: text, userId: user?.id });
       setMessages(m => [...m, { from: "bot", text: res.data.reply }]);
     } catch {
-      setMessages(m => [...m, { from: "bot", text: "😔 Błąd połączenia z asystentem." }]);
+      setMessages(m => [...m, { from: "bot", text: " Błąd połączenia z asystentem." }]);
     }
   };
 

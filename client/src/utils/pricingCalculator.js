@@ -5,27 +5,17 @@
 
 /**
  * Określa czy dane miejsce jest kanapą
+ * ZASADA: Wszystkie sale mają kanapy w OSTATNICH 2 RZĘDACH
  * @param {string} seat - Numer miejsca (np. "A1", "F5")
- * @param {string} hallType - Typ sali ('vip', 'mixed', 'standard')
- * @param {string} hallName - Nazwa sali (np. "Sala 4")
+ * @param {string} hallType - Typ sali (nieużywane - zachowane dla kompatybilności)
+ * @param {string} hallName - Nazwa sali (nieużywane - zachowane dla kompatybilności)
  * @param {number} totalRows - Liczba rzędów w sali
  * @returns {boolean} true jeśli miejsce jest kanapą
  */
 export function isSeatCouch(seat, hallType, hallName, totalRows) {
   const rowLetter = seat[0];
+  const rowNumber = rowLetter.charCodeAt(0) - 65;
 
-  // Sala VIP: rzędy F-G to kanapy VIP (niezależnie od nazwy)
-  if (hallType === 'vip') {
-    return ['F', 'G'].includes(rowLetter);
-  }
-
-  // Sala mixed: rzędy I-J to kanapy
-  if (hallType === 'mixed') {
-    return ['I', 'J'].includes(rowLetter);
-  }
-
-  // Standardowy układ: ostatnie 2 rzędy to kanapy
-  const rowNumber = rowLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
   return rowNumber >= totalRows - 2;
 }
 
@@ -39,8 +29,6 @@ export function isSeatCouch(seat, hallType, hallName, totalRows) {
 export function calculateSeatPrice(seat, hallInfo, sessionPrice) {
   const { type: hallType, name: hallName, totalRows } = hallInfo;
 
-  // Wszystkie sale używają tego samego systemu:
-  // Kanapy = 2x cena bazowa, Fotele = 1x cena bazowa
   const isCouch = isSeatCouch(seat, hallType, hallName, totalRows);
   return isCouch ? sessionPrice * 2 : sessionPrice;
 }
@@ -63,7 +51,6 @@ export function calculateTotalPrice(seats, hallInfo, sessionPrice) {
 }
 
 /**
- * Zwraca szczegółowe informacje o cenach dla wybranych miejsc
  * @param {string[]} seats - Tablica numerów miejsc
  * @param {object} hallInfo - {type, name, totalRows}
  * @param {number} sessionPrice - Cena bazowa seansu

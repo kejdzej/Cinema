@@ -36,19 +36,19 @@ describe('PricingCalculator - Unit Tests', () => {
       expect(detectHallType('Sala VIP Premium', '')).toBe('vip');
     });
 
-    test('should detect VIP hall by description', () => {
-      expect(detectHallType('Sala 4', 'Ekskluzywna sala VIP')).toBe('vip');
+    test('should return standard for normal halls', () => {
+      expect(detectHallType('Sala 1', 'Standardowa sala kinowa')).toBe('standard');
+      expect(detectHallType('Sala 2', '')).toBe('standard');
+      expect(detectHallType('Główna sala', '')).toBe('standard');
     });
-
+    
     test('should detect mixed hall (Sala 3)', () => {
       expect(detectHallType('Sala 3', '')).toBe('mixed');
       expect(detectHallType('SALA 3 Premium', '')).toBe('mixed');
     });
 
-    test('should return standard for normal halls', () => {
-      expect(detectHallType('Sala 1', 'Standardowa sala kinowa')).toBe('standard');
-      expect(detectHallType('Sala 2', '')).toBe('standard');
-      expect(detectHallType('Main Hall', '')).toBe('standard');
+    test('should detect VIP hall by description', () => {
+      expect(detectHallType('Sala 4', 'Ekskluzywna sala VIP')).toBe('vip');
     });
 
     test('should handle null/undefined inputs', () => {
@@ -68,23 +68,24 @@ describe('PricingCalculator - Unit Tests', () => {
       expect(isSeatCouch('E5', 'vip', 'Sala VIP', 40)).toBe(false);
     });
 
-    test('should detect couch seats in mixed hall (rows I, J)', () => {
-      expect(isSeatCouch('I1', 'mixed', 'Sala 3', 40)).toBe(true);
-      expect(isSeatCouch('J5', 'mixed', 'Sala 3', 40)).toBe(true);
+    test('should detect couch seats in mixed hall (rows F, G)', () => {
+      expect(isSeatCouch('F1', 'mixed', 'Sala 3', 72)).toBe(true);
+      expect(isSeatCouch('G5', 'mixed', 'Sala 3', 72)).toBe(true);
     });
 
     test('should detect normal seats in mixed hall', () => {
-      expect(isSeatCouch('A1', 'mixed', 'Sala 3', 40)).toBe(false);
-      expect(isSeatCouch('H5', 'mixed', 'Sala 3', 40)).toBe(false);
+      expect(isSeatCouch('A1', 'mixed', 'Sala 3', 72)).toBe(false);
+      expect(isSeatCouch('E5', 'mixed', 'Sala 3', 72)).toBe(false);
     });
 
     test('should detect couches in standard hall based on capacity', () => {
-      // Sala 1 (72 capacity) - rows H onwards
-      expect(isSeatCouch('H1', 'standard', 'Sala 1', 72)).toBe(true);
+      // Sala 1 (88 capacity) - kanapy w H, I
+      expect(isSeatCouch('H1', 'standard', 'Sala 1', 88)).toBe(true);
+      expect(isSeatCouch('I1', 'standard', 'Sala 1', 88)).toBe(true);
 
-      // Sala 2 (50 capacity) - rows D, E
-      expect(isSeatCouch('D1', 'standard', 'Sala 2', 50)).toBe(true);
-      expect(isSeatCouch('E1', 'standard', 'Sala 2', 50)).toBe(true);
+      // Sala 2 (70 capacity) - kanapy w D, E
+      expect(isSeatCouch('D1', 'standard', 'Sala 2', 70)).toBe(true);
+      expect(isSeatCouch('E1', 'standard', 'Sala 2', 70)).toBe(true);
     });
   });
 
@@ -114,20 +115,30 @@ describe('PricingCalculator - Unit Tests', () => {
   describe('calculateTotalPrice', () => {
     test('should calculate price for normal seats only', () => {
       const seats = ['A1', 'A2', 'A3'];
-      const hallInfo = { type: 'standard', name: 'Sala 1', capacity: 40 };
+      const hallInfo = { type: 'standard', name: 'Sala 1', capacity: 80 };
       const sessionPrice = 25;
 
       const total = calculateTotalPrice(seats, hallInfo, sessionPrice);
-      expect(total).toBe(75); // 3 × 25
+      expect(total).toBe(75);
     });
 
     test('should calculate price with mix of normal and couch seats', () => {
-      const seats = ['A1', 'F1']; // A1 normal, F1 couch in VIP
-      const hallInfo = { type: 'vip', name: 'VIP Sala', capacity: 40 };
-      const sessionPrice = 20;
+      const seats = ['A1', 'F1'];
+      const hallInfo = { type: 'vip', name: 'VIP Sala', capacity: 72 };
+      const sessionPrice = 35;
 
       const total = calculateTotalPrice(seats, hallInfo, sessionPrice);
-      expect(total).toBe(60); // 20 + 40
+      expect(total).toBe(105);
+    });
+
+    test('should handle empty seats array', () => {
+      const seats = [];
+      const hallInfo = { type: 'standard', name: 'Sala 1', capacity: 80 };
+      const sessionPrice = 25;
+
+      const total = calculateTotalPrice(seats, hallInfo, sessionPrice);
+      expect(total).toBe(0);
+
     });
 
     test('should calculate price for all couch seats', () => {
@@ -137,15 +148,6 @@ describe('PricingCalculator - Unit Tests', () => {
 
       const total = calculateTotalPrice(seats, hallInfo, sessionPrice);
       expect(total).toBe(180); // 3 × 60
-    });
-
-    test('should handle empty seats array', () => {
-      const seats = [];
-      const hallInfo = { type: 'standard', name: 'Sala 1', capacity: 40 };
-      const sessionPrice = 25;
-
-      const total = calculateTotalPrice(seats, hallInfo, sessionPrice);
-      expect(total).toBe(0);
     });
 
     test('should handle invalid session price', () => {

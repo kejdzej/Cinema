@@ -19,17 +19,15 @@ describe('Loyalty System Integration Tests', () => {
   let userId;
 
   beforeAll(async () => {
-    // Check if server is running
     const isRunning = await checkServerRunning();
     if (!isRunning) {
-      throw new Error('❌ Server is not running! Please start with: npm run dev');
+      throw new Error(' Server is not running!');
     }
 
-    // Create test user
     const testUser = {
       name: 'Loyalty Test User',
-      email: `loyalty${Date.now()}@example.com`,
-      password: 'TestPassword123!',
+      email: `loyalty@example.com`,
+      password: 'Haslo123!',
     };
 
     const registerResponse = await request(API_URL)
@@ -38,16 +36,13 @@ describe('Loyalty System Integration Tests', () => {
 
     authToken = registerResponse.body.token;
 
-    // Get user ID
     const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [testUser.email]);
     userId = users[0].id;
 
-    // Give user some points for testing
     await pool.query('UPDATE users SET points = 1000 WHERE id = ?', [userId]);
   });
 
   afterAll(async () => {
-    // Cleanup
     await pool.query('DELETE FROM loyalty_history WHERE user_id = ?', [userId]);
     await pool.query('DELETE FROM orders WHERE user_id = ?', [userId]);
     await pool.query('DELETE FROM users WHERE id = ?', [userId]);
@@ -95,7 +90,7 @@ describe('Loyalty System Integration Tests', () => {
       const response = await request(API_URL)
         .post('/api/loyalty/redeem')
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ reward: 'drink' }) // 100 points
+        .send({ reward: 'drink' })
         .expect(200);
 
       expect(response.body).toHaveProperty('success', true);
@@ -148,6 +143,48 @@ describe('Loyalty System Integration Tests', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('requiresSession', true);
+    });
+
+    test('should redeem free ticket successfully with session', async () => {
+      await pool.query('UPDATE users SET points = 1000 WHERE id = ?', [userId]);
+
+      let sessionId;
+      const [sessions] = await pool.query(
+        `SELECT s.id FROM sessions s
+         LEFT JOIN cinema_halls h ON s.hall_id = h.id
+         WHERE (s.format = '2D' OR s.format IS NULL)
+         AND (h.name NOT LIKE '%VIP%' OR h.name IS NULL)
+         LIMIT 1`
+      );
+
+      if (sessions.length) {
+        sessionId = sessions[0].id;
+        await pool.query('UPDATE sessions SET format = ? WHERE id = ?', ['2D', sessionId]);
+      } else {
+        const [movies] = await pool.query('SELECT id FROM movies LIMIT 1');
+        const movieId = movies[0]?.id || 1;
+        const [halls] = await pool.query(
+          `SELECT id FROM cinema_halls WHERE name NOT LIKE '%VIP%' LIMIT 1`
+        );
+        const hallId = halls[0]?.id || null;
+
+        await pool.query(
+          'INSERT INTO sessions (movie_id, datetime, price, format, hall_id) VALUES (?, DATE_ADD(NOW(), INTERVAL 1 DAY), 25.00, ?, ?)',
+          [movieId, '2D', hallId]
+        );
+        const [newSessions] = await pool.query('SELECT id FROM sessions ORDER BY id DESC LIMIT 1');
+        sessionId = newSessions[0].id;
+      }
+
+      const response = await request(API_URL)
+        .post('/api/loyalty/redeem/free-ticket')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ session_id: sessionId, seats: 'A1' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('ticket_id');
+      expect(response.body).toHaveProperty('newBalance', 500); // 1000 - 500
     });
   });
 

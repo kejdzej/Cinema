@@ -26,7 +26,6 @@ export default function Reservation() {
     }
   }, [isRewardMode]);
 
-  // ladowanie seansu i miejsc zajetych 
   useEffect(() => {
     Promise.all([
       api.get(`/sessions/${id}`),
@@ -34,17 +33,14 @@ export default function Reservation() {
     ])
       .then(([sRes, tRes]) => {
         setSession(sRes.data)
-        // Bezpieczne parsowanie miejsc - obsługa stringów i tablic
         try {
           const allSeats = [];
           tRes.data.forEach(ticket => {
             if (ticket.seats) {
               if (typeof ticket.seats === 'string') {
-                // Jeśli string, podziel po przecinku
                 const seats = ticket.seats.split(',').map(s => s.trim()).filter(s => s);
                 allSeats.push(...seats);
               } else if (Array.isArray(ticket.seats)) {
-                // Jeśli już tablica, dodaj bezpośrednio
                 allSeats.push(...ticket.seats);
               }
             }
@@ -69,7 +65,6 @@ export default function Reservation() {
   }
 
  const purchase = async () => {
-  // Sprawdź czy seans nie minął
   if (session && new Date(session.datetime) < new Date()) {
     showToast("error", "Nie można kupić biletu na seans który już się odbył");
     return;
@@ -99,7 +94,6 @@ export default function Reservation() {
     });
 
     console.log("purchase() RESPONSE", response.data);
-    // Stwórz PaymentIntent po zakupie biletu
     const amountPln = response.data.amount
     const amountCents = Math.round(Number(amountPln) * 100)
     const pi = await api.post('/payments/create-payment-intent', {
@@ -128,7 +122,6 @@ export default function Reservation() {
   if (loading) return <div className="container">Ładowanie...</div>
   if (!session) return <div className="container">Brak seansu</div>
 
-  // Generowanie miejsc - sztywne układy dla konkretnych sal
   const capacity = session.hall_capacity || 40;
   const hallType = session.hall_type || 'standard';
   const hallName = session.hall_name || '';
@@ -136,13 +129,13 @@ export default function Reservation() {
   const seats = [];
   const seatsByRow = {};
   
-  // Sala 1: 72 miejsca - 9 rzędów po 8 miejsc
-  // Sala 2: 50 miejsc - 5 rzędów po 10 foteli
-  // Sala 3: 144 miejsca fizyczne - 8 rzędów foteli po 8 + 4 rzędy kanap po 10
-  // Sala 4: 56 miejsc fizycznych VIP - 4 rzędy foteli VIP po 10 + 1 rząd kanap VIP (8 kanap)
+  // Sala 1: 88 miejsc 
+  // Sala 2: 70 miejsc
+  // Sala 3: 72 miejsca 
+  // Sala 4: 72 miejsc 
   
-  if (hallName.includes('Sala 1') || (capacity === 72 && hallType === 'standard')) {
-    // Sala 1: 9 rzędów po 8 miejsc
+  if (hallName.includes('Sala 1') || (capacity === 88 && hallType === 'standard')) {
+    // Sala 1: 9 rzędów po 8 miejsc (A-I), ostatnie 2 rzędy (H-I) to kanapy
     const rows = 9;
     const seatsPerRow = 8;
     for (let r = 0; r < rows; r++) {
@@ -154,8 +147,8 @@ export default function Reservation() {
         seatsByRow[rowLetter].push(seat);
       }
     }
-  } else if (hallName.includes('Sala 2') || (capacity === 50 && hallType === 'standard')) {
-    // Sala 2: 5 rzędów po 10 - ostatnie 2 rzędy (D-E) to kanapy
+  } else if (hallName.includes('Sala 2') || (capacity === 70 && hallType === 'standard')) {
+    // Sala 2: 5 rzędów po 10 (A-E) - ostatnie 2 rzędy (D-E) to kanapy
     const normalRows = 3; // Rzędy A-C to fotele
     const couchRows = 2; // Rzędy D-E to kanapy
     const seatsPerRow = 10;
@@ -182,9 +175,9 @@ export default function Reservation() {
       }
     }
   } else if (hallType === 'mixed') {
-    // Sala mixed: 8 rzędów foteli po 8 + 2 rzędy kanap po 10
-    // Rzędy foteli (A-H): 8 rzędów po 8 foteli = 64 miejsca
-    const normalRows = 8;
+    // Sala mixed: 5 rzędów foteli po 8 + 2 rzędy kanap po 8
+    // Rzędy foteli (A-E): 5 rzędów po 8 foteli = 40 miejsc
+    const normalRows = 5;
     const normalSeatsPerRow = 8;
     for (let r = 0; r < normalRows; r++) {
       const rowLetter = String.fromCharCode(65 + r);
@@ -195,7 +188,7 @@ export default function Reservation() {
         seatsByRow[rowLetter].push(seat);
       }
     }
-    // Rzędy kanap (I-J): 2 rzędy po 8 kanap = 16 miejsc w bazie (32 fizycznie)
+    // Rzędy kanap (F-G): 2 rzędy po 8 kanap = 16 miejsc w bazie (32 fizycznie)
     const couchRows = 2;
     const couchSeatsPerRow = 8; // 8 kanap na rząd
     for (let r = 0; r < couchRows; r++) {
@@ -235,19 +228,6 @@ export default function Reservation() {
       }
     }
     // Razem: 40 + 32 = 72 miejsca fizyczne
-  } else if (hallName.includes('Sala 1') || (capacity === 72 && hallType === 'standard')) {
-    // Sala 1: 72 miejsca - 9 rzędów po 8 miejsc
-    const rows = 9;
-    const seatsPerRow = 8;
-    for (let r = 0; r < rows; r++) {
-      const rowLetter = String.fromCharCode(65 + r);
-      seatsByRow[rowLetter] = [];
-      for (let c = 1; c <= seatsPerRow; c++) {
-        const seat = rowLetter + c;
-        seats.push(seat);
-        seatsByRow[rowLetter].push(seat);
-      }
-    }
   } else {
     // Domyślny układ: 5 rzędów zwykłych + 2 rzędy kanap (40 miejsc)
     const rows = 5;
@@ -327,21 +307,11 @@ export default function Reservation() {
       {/* Układ miejsc - wszystkie w jednym rzędzie */}
       <div className="seats-layout">
         {Object.entries(seatsByRow).map(([rowLetter, rowSeats]) => {
-                  // Określ czy to kanapa na podstawie typu sali i rzędu
-                  let isCouch = false;
-                  if (hallType === 'vip') {
-                    // Sala VIP: rzędy F-G to kanapy VIP
-                    isCouch = ['F', 'G'].includes(rowLetter);
-                  } else if (hallType === 'mixed') {
-                    // Sala mixed: rzędy I-J to kanapy
-                    isCouch = ['I', 'J'].includes(rowLetter);
-                  } else {
-                    // Standardowy układ: ostatnie 2 rzędy to kanapy (dla sali 1, 2 i innych)
-                    const rowNumber = rowLetter.charCodeAt(0) - 65;
-                    const totalRows = Object.keys(seatsByRow).length;
-                    isCouch = rowNumber >= totalRows - 2;
-                  }
-          
+                  // ZASADA: Wszystkie sale mają kanapy w ostatnich 2 rzędach
+                  const rowNumber = rowLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
+                  const totalRows = Object.keys(seatsByRow).length;
+                  const isCouch = rowNumber >= totalRows - 2;
+
           return (
             <div key={rowLetter} className="seats-row">
               <div className="row-label">{rowLetter}</div>

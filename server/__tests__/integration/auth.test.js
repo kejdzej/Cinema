@@ -19,13 +19,13 @@ describe('Auth Integration Tests', () => {
   beforeAll(async () => {
     const isRunning = await checkServerRunning();
     if (!isRunning) {
-      throw new Error('❌ Server is not running! Please start with: npm run dev');
+      throw new Error('Server is not running!');
     }
   });
   const testUser = {
     name: 'Test User',
-    email: `test${Date.now()}@example.com`,
-    password: 'SecurePassword123!',
+    email: `test@example.com`,
+    password: 'Haslo123!',
   };
 
   let authToken;
@@ -67,6 +67,8 @@ describe('Auth Integration Tests', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('wymagane');
+      expect(response.body.message.length).toBeGreaterThan(5);
     });
 
     test('should reject weak password', async () => {
@@ -98,6 +100,7 @@ describe('Auth Integration Tests', () => {
       expect(response.body).toHaveProperty('user');
       expect(response.body.user).toHaveProperty('email', testUser.email);
       expect(response.body.user).toHaveProperty('name', testUser.name);
+      expect(response.body.user).toHaveProperty('role');
 
       authToken = response.body.token;
     });
@@ -107,12 +110,12 @@ describe('Auth Integration Tests', () => {
         .post('/api/auth/login')
         .send({
           email: testUser.email,
-          password: 'WrongPassword123!',
+          password: 'haslo123!',
         })
         .expect(400);
 
       expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain('Nieprawidłowy');
+      expect(response.body.message).toContain('Nieprawidłowy email lub hasło');
     });
 
     test('should reject non-existent user', async () => {
@@ -120,11 +123,11 @@ describe('Auth Integration Tests', () => {
         .post('/api/auth/login')
         .send({
           email: 'nonexistent@example.com',
-          password: 'SomePassword123!',
+          password: 'haslo123',
         })
         .expect(400);
 
-      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Nieprawidłowy email lub hasło');
     });
 
     test('should reject missing credentials', async () => {
@@ -133,7 +136,7 @@ describe('Auth Integration Tests', () => {
         .send({})
         .expect(400);
 
-      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Email i hasło są wymagane');
     });
   });
 
